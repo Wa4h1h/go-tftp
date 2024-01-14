@@ -35,6 +35,7 @@ func GetEnv[T Env](key string, defaultVal string, required bool) T {
 		if err != nil {
 			panic(fmt.Sprintf("error: parsing env %s=%s", key, val))
 		}
+
 		*ptr = parsedVal
 	case *string:
 		*ptr = val

@@ -7,15 +7,14 @@ import (
 	"go.uber.org/zap"
 	"net"
 	"os"
-	"time"
 )
 
 type Server struct {
 	port         string
-	readTimeout  uint
-	writeTimeout uint
 	logger       *zap.Logger
 	conn         net.PacketConn
+	readTimeout  uint
+	writeTimeout uint
 }
 
 func NewServer(l *zap.Logger, port string, readTimeout uint, writeTimeout uint) *Server {
@@ -32,12 +31,6 @@ func (s *Server) ListenAndServe() error {
 
 	for {
 		datagram := make([]byte, 516)
-
-		if err := conn.SetReadDeadline(time.Now().Add(time.Duration(s.readTimeout) * time.Second)); err != nil {
-			s.logger.Error(fmt.Sprintf("setting read deadline failed: %s", err.Error()))
-
-			return fmt.Errorf("error while setting reading deadline")
-		}
 
 		n, addr, err := conn.ReadFrom(datagram)
 		if err != nil && !errors.Is(err, net.ErrClosed) {
@@ -61,5 +54,6 @@ func (s *Server) Close() error {
 }
 
 func (s *Server) handle(n int, remoteAddr net.Addr, conn net.PacketConn) {
+	s.logger.Info("received connection")
 	conn.WriteTo([]byte("hello world"), remoteAddr)
 }
