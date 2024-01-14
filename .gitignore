@@ -19,3 +19,9 @@
 
 # Go workspace file
 go.work
+
+# Gland
+.idea
+
+# Macos
+.DS_Store
