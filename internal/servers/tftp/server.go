@@ -3,10 +3,10 @@ package tftp
 import (
 	"errors"
 	"fmt"
+	"github.com/WadhahJemai/go-tftp/internal/types"
 	"github.com/WadhahJemai/go-tftp/internal/utils"
 	"go.uber.org/zap"
 	"net"
-	"os"
 )
 
 type Server struct {
@@ -28,20 +28,19 @@ func (s *Server) ListenAndServe() error {
 	}
 
 	s.conn = conn
-
+	var req types.Request
 	for {
 		datagram := make([]byte, 516)
-
 		n, addr, err := conn.ReadFrom(datagram)
 		if err != nil && !errors.Is(err, net.ErrClosed) {
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-				s.logger.Error("reading timed out")
-			}
-
 			return nil
 		}
 
-		go s.handle(n, addr, conn)
+		if err := req.UnmarshalBinary(datagram); err != nil {
+			continue
+		}
+
+		go s.handle(n, addr, datagram)
 	}
 }
 
@@ -53,7 +52,6 @@ func (s *Server) Close() error {
 	return nil
 }
 
-func (s *Server) handle(n int, remoteAddr net.Addr, conn net.PacketConn) {
-	s.logger.Info("received connection")
-	conn.WriteTo([]byte("hello world"), remoteAddr)
+func (s *Server) handle(n int, remoteAddr net.Addr, datagram []byte) {
+	s.logger.Info(string(datagram))
 }

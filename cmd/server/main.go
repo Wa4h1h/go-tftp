@@ -21,11 +21,11 @@ func main() {
 	l := utils.NewLogger(logLevel)
 	s := tftp.NewServer(l, tftpPort, readTimeout, writeTimeout)
 
-	go func(se *tftp.Server) {
-		if err := se.ListenAndServe(); err != nil {
+	go func() {
+		if err := s.ListenAndServe(); err != nil {
 			l.Error(err.Error())
 		}
-	}(s)
+	}()
 
 	l.Info(fmt.Sprintf("listening on port %s", tftpPort))
 
