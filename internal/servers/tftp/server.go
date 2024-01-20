@@ -39,12 +39,13 @@ func (s *Server) ListenAndServe() error {
 
 	for {
 		datagram := make([]byte, types.Datagramsize)
-		_, addr, err := conn.ReadFrom(datagram)
+
+		n, addr, err := conn.ReadFrom(datagram)
 		if err != nil && !errors.Is(err, net.ErrClosed) {
 			return err
 		}
 
-		if addr != nil {
+		if n > 0 {
 			go s.handlePacket(addr, datagram)
 		}
 	}
@@ -73,7 +74,7 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 		}
 	}()
 
-	sender := NewTSender(conn, s.logger, time.Duration(s.readTimeout)*time.Second, time.Duration(s.writeTimeout)*time.Second, s.numTries)
+	sender := NewSender(conn, s.logger, time.Duration(s.readTimeout)*time.Second, time.Duration(s.writeTimeout)*time.Second, s.numTries)
 
 	var req types.Request
 
@@ -86,7 +87,7 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 	if req.Opcode == types.OpCodeRRQ {
 		errPacket := sender.send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
 		if errPacket != nil {
-			if err := SendErrorPacket(conn, errPacket); err != nil {
+			if err := sendErrorPacket(conn, errPacket); err != nil {
 				s.logger.Error(err.Error())
 
 				return

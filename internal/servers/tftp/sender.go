@@ -23,12 +23,11 @@ type Sender struct {
 	writeTimeout time.Duration
 }
 
-func NewTSender(conn net.Conn, logger *zap.Logger, readTimeout time.Duration, writeTimeout time.Duration, numTries int) *Sender {
+func NewSender(conn net.Conn, logger *zap.Logger, readTimeout time.Duration, writeTimeout time.Duration, numTries int) *Sender {
 	return &Sender{conn: conn, l: logger, readTimeout: readTimeout, writeTimeout: writeTimeout, numTries: numTries}
 }
 
 func (s *Sender) sendBlock(block []byte, blockNum uint16) error {
-	s.l.Debug(fmt.Sprintf("block# ---> %d", blockNum))
 	var ack types.Ack
 
 	data := &types.Data{
@@ -80,11 +79,11 @@ func (s *Sender) sendBlock(block []byte, blockNum uint16) error {
 				s.l.Error(fmt.Sprintf("ack block# %d != expected block# %d", ack.BlockNum, blockNum))
 
 				continue
-			} else {
-				s.l.Debug(fmt.Sprintf("received block#=%d", ack.BlockNum))
-
-				return nil
 			}
+
+			s.l.Debug(fmt.Sprintf("received block#=%d", ack.BlockNum))
+
+			return nil
 		}
 
 		return nil
@@ -104,7 +103,7 @@ func (s *Sender) send(file string) *types.Error {
 
 		s.l.Error(fmt.Sprintf("error while checking file exists: %s", err.Error()))
 
-		return NotDefinedError()
+		return notDefinedError()
 	}
 
 	if stats.Size()/types.MaxPayloadSize > types.MaxBlocks {
@@ -117,7 +116,7 @@ func (s *Sender) send(file string) *types.Error {
 	if errOpen != nil {
 		s.l.Error(fmt.Sprintf("error while opening file: %s", errOpen.Error()))
 
-		return NotDefinedError()
+		return notDefinedError()
 	}
 
 	defer func() {
@@ -133,13 +132,13 @@ func (s *Sender) send(file string) *types.Error {
 		if err != nil {
 			s.l.Error("error while reading block")
 
-			return NotDefinedError()
+			return notDefinedError()
 		}
 
 		if err := s.sendBlock(block[:n], blockNum); err != nil {
 			s.l.Error(fmt.Sprintf("error while sending data packet: %s", err.Error()))
 
-			return NotDefinedError()
+			return notDefinedError()
 		}
 
 		s.l.Debug(fmt.Sprintf("sent block#=%d, sent #bytes=%d", blockNum, n))
@@ -147,7 +146,6 @@ func (s *Sender) send(file string) *types.Error {
 		blockNum++
 
 		if n < types.MaxPayloadSize {
-			s.l.Debug(fmt.Sprintf("%d", n))
 			return nil
 		}
 	}

@@ -6,7 +6,7 @@ import (
 	"net"
 )
 
-func NotDefinedError() *types.Error {
+func notDefinedError() *types.Error {
 	return &types.Error{
 		Opcode:    types.OpCodeError,
 		ErrorCode: types.ErrNotDefined,
@@ -14,7 +14,7 @@ func NotDefinedError() *types.Error {
 	}
 }
 
-func SendErrorPacket(conn net.Conn, errorPacket *types.Error) error {
+func sendErrorPacket(conn net.Conn, errorPacket *types.Error) error {
 	b, errM := errorPacket.MarshalBinary()
 	if errM != nil {
 		return fmt.Errorf("error while marshal error packet: %s", errM)
