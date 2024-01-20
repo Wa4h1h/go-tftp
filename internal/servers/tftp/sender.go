@@ -82,8 +82,6 @@ func (s *Sender) sendBlock(block []byte, blockNum uint16) error {
 			}
 
 			s.l.Debug(fmt.Sprintf("received block#=%d", ack.BlockNum))
-
-			return nil
 		}
 
 		return nil
