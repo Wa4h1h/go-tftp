@@ -63,14 +63,14 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 	conn, err := net.Dial("udp", addr.String())
 	if err != nil {
 		s.logger.Error(err.Error())
+
+		return
 	}
 
 	defer func() {
 		if err := conn.Close(); err != nil {
 			s.logger.Error(fmt.Sprintf("err --> %s", err.Error()))
 		}
-
-		s.logger.Debug("closed connection")
 	}()
 
 	sender := NewTSender(conn, s.logger, time.Duration(s.readTimeout)*time.Second, time.Duration(s.writeTimeout)*time.Second, s.numTries)
@@ -83,13 +83,15 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 		return
 	}
 
-	errPacket := sender.send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
-	if errPacket != nil {
-		if err := SendErrorPacket(conn, errPacket); err != nil {
-			s.logger.Error(err.Error())
+	if req.Opcode == types.OpCodeRRQ {
+		errPacket := sender.send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
+		if errPacket != nil {
+			if err := SendErrorPacket(conn, errPacket); err != nil {
+				s.logger.Error(err.Error())
 
-			return
+				return
+			}
 		}
-	}
 
+	}
 }

@@ -1,12 +1,10 @@
 package tftp
 
 import (
-	"errors"
 	"fmt"
 	"github.com/WadhahJemai/go-tftp/internal/types"
 	"github.com/WadhahJemai/go-tftp/internal/utils"
 	"go.uber.org/zap"
-	"io"
 	"net"
 	"os"
 	"time"
@@ -30,6 +28,7 @@ func NewTSender(conn net.Conn, logger *zap.Logger, readTimeout time.Duration, wr
 }
 
 func (s *Sender) sendBlock(block []byte, blockNum uint16) error {
+	s.l.Debug(fmt.Sprintf("block# ---> %d", blockNum))
 	var ack types.Ack
 
 	data := &types.Data{
@@ -58,34 +57,37 @@ func (s *Sender) sendBlock(block []byte, blockNum uint16) error {
 			continue
 		}
 
-		if err := s.conn.SetReadDeadline(time.Now().Add(s.readTimeout)); err != nil {
-			s.l.Error(fmt.Sprintf("error while setting read timeout: %s", err.Error()))
+		if !(len(block) < types.MaxPayloadSize) {
+			if err := s.conn.SetReadDeadline(time.Now().Add(s.readTimeout)); err != nil {
+				s.l.Error(fmt.Sprintf("error while setting read timeout: %s", err.Error()))
 
-			continue
+				continue
+			}
+			ackBytes := make([]byte, 4)
+			if _, err := s.conn.Read(ackBytes); err != nil {
+				s.l.Error(fmt.Sprintf("error while reading ack: %s", err.Error()))
+
+				continue
+			}
+
+			if err := ack.UnmarshalBinary(ackBytes); err != nil {
+				s.l.Error(fmt.Sprintf("error while unmashall ack: %s", err.Error()))
+
+				continue
+			}
+
+			if ack.BlockNum != blockNum {
+				s.l.Error(fmt.Sprintf("ack block# %d != expected block# %d", ack.BlockNum, blockNum))
+
+				continue
+			} else {
+				s.l.Debug(fmt.Sprintf("received block#=%d", ack.BlockNum))
+
+				return nil
+			}
 		}
 
-		ackBytes := make([]byte, 4)
-		if _, err := s.conn.Read(ackBytes); err != nil {
-			s.l.Error(fmt.Sprintf("error while reading ack: %s", err.Error()))
-
-			continue
-		}
-
-		if err := ack.UnmarshalBinary(ackBytes); err != nil {
-			s.l.Error(fmt.Sprintf("error while unmashall ack: %s", err.Error()))
-
-			continue
-		}
-
-		if ack.BlockNum != blockNum {
-			s.l.Error(fmt.Sprintf("ack block# %d != expected block# %d", ack.BlockNum, blockNum))
-
-			continue
-		} else {
-			s.l.Debug(fmt.Sprintf("received block#=%d", ack.BlockNum))
-
-			return nil
-		}
+		return nil
 	}
 
 	return utils.ErrDataPacketCanNotBeSent
@@ -111,21 +113,24 @@ func (s *Sender) send(file string) *types.Error {
 			ErrMsg:    "file too large to be transferred over tftp"}
 	}
 
-	f, err := os.Open(file)
-	if err != nil {
-		s.l.Error(fmt.Sprintf("error while opening file: %s", err.Error()))
+	f, errOpen := os.Open(file)
+	if errOpen != nil {
+		s.l.Error(fmt.Sprintf("error while opening file: %s", errOpen.Error()))
 
 		return NotDefinedError()
 	}
+
+	defer func() {
+		if err := f.Close(); err != nil {
+			s.l.Error(fmt.Sprintf("error while closing file: %s", err.Error()))
+		}
+	}()
 
 	var blockNum uint16 = 1
 	for {
 		block := make([]byte, types.MaxPayloadSize)
 		n, err := f.Read(block)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
 			s.l.Error("error while reading block")
 
 			return NotDefinedError()
@@ -142,13 +147,8 @@ func (s *Sender) send(file string) *types.Error {
 		blockNum++
 
 		if n < types.MaxPayloadSize {
-			/*ack:=&types.Ack{Opcode: types.OpCodeACK,BlockNum: blockNum-1}
-			b,_:=ack.MarshalBinary()
-			s.conn.Write(b)*/
-
+			s.l.Debug(fmt.Sprintf("%d", n))
 			return nil
 		}
 	}
-
-	return nil
 }
