@@ -10,7 +10,7 @@ import (
 
 type Error struct {
 	ErrMsg    string
-	ErrorCode uint16
+	ErrorCode ErrCode
 	Opcode    OpCode
 }
 

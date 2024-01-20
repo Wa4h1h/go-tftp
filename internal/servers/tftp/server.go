@@ -7,6 +7,7 @@ import (
 	"github.com/WadhahJemai/go-tftp/internal/utils"
 	"go.uber.org/zap"
 	"net"
+	"time"
 )
 
 type Server struct {
@@ -15,10 +16,17 @@ type Server struct {
 	conn         net.PacketConn
 	readTimeout  uint
 	writeTimeout uint
+	numTries     int
+	tftpFolder   string
 }
 
-func NewServer(l *zap.Logger, port string, readTimeout uint, writeTimeout uint) *Server {
-	return &Server{logger: l, port: port, readTimeout: readTimeout, writeTimeout: writeTimeout}
+func NewServer(l *zap.Logger, port string, readTimeout uint, writeTimeout uint, numTries int, tftpFolder string) *Server {
+	return &Server{logger: l, port: port,
+		readTimeout:  readTimeout,
+		writeTimeout: writeTimeout,
+		numTries:     numTries,
+		tftpFolder:   tftpFolder,
+	}
 }
 
 func (s *Server) ListenAndServe() error {
@@ -28,19 +36,17 @@ func (s *Server) ListenAndServe() error {
 	}
 
 	s.conn = conn
-	var req types.Request
+
 	for {
-		datagram := make([]byte, 516)
-		n, addr, err := conn.ReadFrom(datagram)
+		datagram := make([]byte, types.Datagramsize)
+		_, addr, err := conn.ReadFrom(datagram)
 		if err != nil && !errors.Is(err, net.ErrClosed) {
-			return nil
+			return err
 		}
 
-		if err := req.UnmarshalBinary(datagram); err != nil {
-			continue
+		if addr != nil {
+			go s.handlePacket(addr, datagram)
 		}
-
-		go s.handle(n, addr, datagram)
 	}
 }
 
@@ -52,6 +58,38 @@ func (s *Server) Close() error {
 	return nil
 }
 
-func (s *Server) handle(n int, remoteAddr net.Addr, datagram []byte) {
-	s.logger.Info(string(datagram))
+func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
+
+	conn, err := net.Dial("udp", addr.String())
+	if err != nil {
+		s.logger.Error(err.Error())
+	}
+
+	defer func() {
+		if err := conn.Close(); err != nil {
+			s.logger.Error(fmt.Sprintf("err --> %s", err.Error()))
+		}
+
+		s.logger.Debug("closed connection")
+	}()
+
+	sender := NewTSender(conn, s.logger, time.Duration(s.readTimeout)*time.Second, time.Duration(s.writeTimeout)*time.Second, s.numTries)
+
+	var req types.Request
+
+	if err := req.UnmarshalBinary(datagram); err != nil {
+		s.logger.Error("error while reading request")
+
+		return
+	}
+
+	errPacket := sender.send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
+	if errPacket != nil {
+		if err := SendErrorPacket(conn, errPacket); err != nil {
+			s.logger.Error(err.Error())
+
+			return
+		}
+	}
+
 }

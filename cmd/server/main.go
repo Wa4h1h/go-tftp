@@ -15,11 +15,13 @@ var (
 	readTimeout  = utils.GetEnv[uint]("READ_TIMEOUT", "5", false)
 	writeTimeout = utils.GetEnv[uint]("WRITE_TIMEOUT", "5", false)
 	numTries     = utils.GetEnv[uint]("NUM_TRIES", "5", false)
+	tftpBaseDir  = utils.GetEnv[string]("TFTP_BASE_DIR", utils.UserHomeDirPath(), false)
 )
 
 func main() {
 	l := utils.NewLogger(logLevel)
-	s := tftp.NewServer(l, tftpPort, readTimeout, writeTimeout)
+
+	s := tftp.NewServer(l, tftpPort, readTimeout, writeTimeout, int(numTries), tftpBaseDir)
 
 	go func() {
 		if err := s.ListenAndServe(); err != nil {
