@@ -2,8 +2,8 @@ package tftp
 
 import (
 	"fmt"
-	"github.com/WadhahJemai/go-tftp/internal/types"
-	"github.com/WadhahJemai/go-tftp/internal/utils"
+	"github.com/WadhahJemai/go-tftp/pkg/types"
+	"github.com/WadhahJemai/go-tftp/pkg/utils"
 	"go.uber.org/zap"
 	"net"
 	"os"
