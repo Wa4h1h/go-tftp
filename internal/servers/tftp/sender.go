@@ -10,12 +10,12 @@ import (
 	"time"
 )
 
-type FileSender interface {
-	send(file string) error
+type Sender interface {
+	send(file string) *types.Error
 	sendBlock(block []byte, blockNum uint16) error
 }
 
-type Sender struct {
+type FileSender struct {
 	conn         net.Conn
 	l            *zap.Logger
 	numTries     int
@@ -23,11 +23,11 @@ type Sender struct {
 	writeTimeout time.Duration
 }
 
-func NewSender(conn net.Conn, logger *zap.Logger, readTimeout time.Duration, writeTimeout time.Duration, numTries int) *Sender {
-	return &Sender{conn: conn, l: logger, readTimeout: readTimeout, writeTimeout: writeTimeout, numTries: numTries}
+func NewSender(conn net.Conn, logger *zap.Logger, readTimeout time.Duration, writeTimeout time.Duration, numTries int) Sender {
+	return &FileSender{conn: conn, l: logger, readTimeout: readTimeout, writeTimeout: writeTimeout, numTries: numTries}
 }
 
-func (s *Sender) sendBlock(block []byte, blockNum uint16) error {
+func (s *FileSender) sendBlock(block []byte, blockNum uint16) error {
 	var ack types.Ack
 
 	data := &types.Data{
@@ -62,7 +62,9 @@ func (s *Sender) sendBlock(block []byte, blockNum uint16) error {
 
 				continue
 			}
+
 			ackBytes := make([]byte, 4)
+
 			if _, err := s.conn.Read(ackBytes); err != nil {
 				s.l.Error(fmt.Sprintf("error while reading ack: %s", err.Error()))
 
@@ -81,7 +83,7 @@ func (s *Sender) sendBlock(block []byte, blockNum uint16) error {
 				continue
 			}
 
-			s.l.Debug(fmt.Sprintf("received block#=%d", ack.BlockNum))
+			s.l.Debug(fmt.Sprintf("received ack block#=%d", ack.BlockNum))
 		}
 
 		return nil
@@ -90,7 +92,7 @@ func (s *Sender) sendBlock(block []byte, blockNum uint16) error {
 	return utils.ErrDataPacketCanNotBeSent
 }
 
-func (s *Sender) send(file string) *types.Error {
+func (s *FileSender) send(file string) *types.Error {
 	stats, err := os.Stat(file)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -124,8 +126,10 @@ func (s *Sender) send(file string) *types.Error {
 	}()
 
 	var blockNum uint16 = 1
+
 	for {
 		block := make([]byte, types.MaxPayloadSize)
+
 		n, err := f.Read(block)
 		if err != nil {
 			s.l.Error("error while reading block")

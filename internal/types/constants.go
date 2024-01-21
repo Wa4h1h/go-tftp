@@ -25,4 +25,4 @@ const (
 
 const MaxBlocks = 65535
 const MaxPayloadSize = 512
-const Datagramsize = 516
+const DatagramSize = 516

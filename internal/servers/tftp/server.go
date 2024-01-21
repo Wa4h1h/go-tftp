@@ -12,12 +12,12 @@ import (
 
 type Server struct {
 	port         string
+	tftpFolder   string
 	logger       *zap.Logger
 	conn         net.PacketConn
+	numTries     int
 	readTimeout  uint
 	writeTimeout uint
-	numTries     int
-	tftpFolder   string
 }
 
 func NewServer(l *zap.Logger, port string, readTimeout uint, writeTimeout uint, numTries int, tftpFolder string) *Server {
@@ -38,7 +38,7 @@ func (s *Server) ListenAndServe() error {
 	s.conn = conn
 
 	for {
-		datagram := make([]byte, types.Datagramsize)
+		datagram := make([]byte, types.DatagramSize)
 
 		n, addr, err := conn.ReadFrom(datagram)
 		if err != nil && !errors.Is(err, net.ErrClosed) {
@@ -60,7 +60,6 @@ func (s *Server) Close() error {
 }
 
 func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
-
 	conn, err := net.Dial("udp", addr.String())
 	if err != nil {
 		s.logger.Error(err.Error())
@@ -74,8 +73,6 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 		}
 	}()
 
-	sender := NewSender(conn, s.logger, time.Duration(s.readTimeout)*time.Second, time.Duration(s.writeTimeout)*time.Second, s.numTries)
-
 	var req types.Request
 
 	if err := req.UnmarshalBinary(datagram); err != nil {
@@ -85,6 +82,8 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 	}
 
 	if req.Opcode == types.OpCodeRRQ {
+		sender := NewSender(conn, s.logger, time.Duration(s.readTimeout)*time.Second, time.Duration(s.writeTimeout)*time.Second, s.numTries)
+
 		errPacket := sender.send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
 		if errPacket != nil {
 			if err := sendErrorPacket(conn, errPacket); err != nil {
@@ -93,6 +92,5 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 				return
 			}
 		}
-
 	}
 }

@@ -20,7 +20,6 @@ var (
 
 func main() {
 	l := utils.NewLogger(logLevel)
-
 	s := tftp.NewServer(l, tftpPort, readTimeout, writeTimeout, int(numTries), tftpBaseDir)
 
 	go func() {
