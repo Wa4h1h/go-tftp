@@ -69,7 +69,7 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 
 	defer func() {
 		if err := conn.Close(); err != nil {
-			s.logger.Error(fmt.Sprintf("err --> %s", err.Error()))
+			s.logger.Error(fmt.Sprintf("error while closing connection with %s: %s", conn.RemoteAddr().Network(), err.Error()))
 		}
 	}()
 
@@ -81,10 +81,17 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 		return
 	}
 
-	if req.Opcode == types.OpCodeRRQ {
-		sender := NewSender(conn, s.logger, time.Duration(s.readTimeout)*time.Second, time.Duration(s.writeTimeout)*time.Second, s.numTries)
+	var c Connection = NewTransfer(conn, s.logger,
+		time.Duration(s.readTimeout)*time.Second,
+		time.Duration(s.writeTimeout)*time.Second,
+		s.numTries)
 
-		errPacket := sender.send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
+	if req.Opcode == types.OpCodeRRQ {
+		errPacket, err := c.send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
+		if err != nil {
+			return
+		}
+
 		if errPacket != nil {
 			if err := sendErrorPacket(conn, errPacket); err != nil {
 				s.logger.Error(err.Error())
