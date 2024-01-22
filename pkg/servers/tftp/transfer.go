@@ -134,7 +134,11 @@ func (c *Connection) send(file string) error {
 
 	f, errOpen := os.Open(file)
 	if errOpen != nil {
-		return fmt.Errorf("error while opening file: %w", errOpen)
+		if err := sendErrorPacket(c.conn, errPacket); err != nil {
+			return fmt.Errorf("error while opening file: %w", errOpen)
+		}
+
+		return nil
 	}
 
 	defer func() {
@@ -150,7 +154,11 @@ func (c *Connection) send(file string) error {
 
 		n, err := f.Read(block)
 		if err != nil {
-			return fmt.Errorf("error while reading file block: %w", err)
+			if err := sendErrorPacket(c.conn, errPacket); err != nil {
+				return fmt.Errorf("error while reading file block: %w", err)
+			}
+
+			return nil
 		}
 
 		if err := c.sendBlock(block[:n], blockNum); err != nil {
