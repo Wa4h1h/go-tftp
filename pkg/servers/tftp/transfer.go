@@ -11,12 +11,12 @@ import (
 	"time"
 )
 
-type Connection interface {
+type Transfer interface {
 	send(file string) (*types.Error, error)
 	sendBlock(block []byte, blockNum uint16) error
 }
 
-type Transfer struct {
+type Connection struct {
 	conn         net.Conn
 	l            *zap.Logger
 	numTries     int
@@ -24,13 +24,13 @@ type Transfer struct {
 	writeTimeout time.Duration
 }
 
-func NewTransfer(conn net.Conn,
+func NewConnection(conn net.Conn,
 	logger *zap.Logger, readTimeout time.Duration,
-	writeTimeout time.Duration, numTries int) *Transfer {
-	return &Transfer{conn: conn, l: logger, readTimeout: readTimeout, writeTimeout: writeTimeout, numTries: numTries}
+	writeTimeout time.Duration, numTries int) *Connection {
+	return &Connection{conn: conn, l: logger, readTimeout: readTimeout, writeTimeout: writeTimeout, numTries: numTries}
 }
 
-func (t *Transfer) sendBlock(block []byte, blockNum uint16) error {
+func (c *Connection) sendBlock(block []byte, blockNum uint16) error {
 	var ack types.Ack
 	var errPacket types.Error
 
@@ -42,36 +42,36 @@ func (t *Transfer) sendBlock(block []byte, blockNum uint16) error {
 
 	b, err := data.MarshalBinary()
 	if err != nil {
-		t.l.Error(err.Error())
+		c.l.Error(err.Error())
 
 		return utils.ErrDataMarshall
 	}
 
-	for i := t.numTries; i > 0; i-- {
-		if err := t.conn.SetWriteDeadline(time.Now().Add(t.writeTimeout)); err != nil {
-			t.l.Error(fmt.Sprintf("error while setting write timeout: %s", err.Error()))
+	for i := c.numTries; i > 0; i-- {
+		if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeTimeout)); err != nil {
+			c.l.Error(fmt.Sprintf("error while setting write timeout: %s", err.Error()))
 
 			continue
 		}
 
-		if _, err := t.conn.Write(b); err != nil {
-			t.l.Error(fmt.Sprintf("error while writing data packet: %s", err.Error()))
+		if _, err := c.conn.Write(b); err != nil {
+			c.l.Error(fmt.Sprintf("error while writing data packet: %s", err.Error()))
 
 			continue
 		}
 
 		if !(len(block) < types.MaxPayloadSize) {
-			if err := t.conn.SetReadDeadline(time.Now().Add(t.readTimeout)); err != nil {
-				t.l.Error(fmt.Sprintf("error while setting read timeout: %s", err.Error()))
+			if err := c.conn.SetReadDeadline(time.Now().Add(c.readTimeout)); err != nil {
+				c.l.Error(fmt.Sprintf("error while setting read timeout: %s", err.Error()))
 
 				continue
 			}
 
 			buf := make([]byte, types.DatagramSize)
 
-			n, err := t.conn.Read(buf)
+			n, err := c.conn.Read(buf)
 			if err != nil {
-				t.l.Error(fmt.Sprintf("error while reading ack: %s", err.Error()))
+				c.l.Error(fmt.Sprintf("error while reading ack: %s", err.Error()))
 
 				continue
 			}
@@ -79,7 +79,7 @@ func (t *Transfer) sendBlock(block []byte, blockNum uint16) error {
 			switch {
 			case ack.UnmarshalBinary(buf[:n]) == nil:
 				if ack.BlockNum != blockNum {
-					t.l.Error(fmt.Sprintf("ack block# %d != expected block# %d", ack.BlockNum, blockNum))
+					c.l.Error(fmt.Sprintf("ack block# %d != expected block# %d", ack.BlockNum, blockNum))
 
 					continue
 				}
@@ -89,7 +89,7 @@ func (t *Transfer) sendBlock(block []byte, blockNum uint16) error {
 				continue
 			}
 
-			t.l.Debug(fmt.Sprintf("received ack block#=%d", ack.BlockNum))
+			c.l.Debug(fmt.Sprintf("received ack block#=%d", ack.BlockNum))
 		}
 
 		return nil
@@ -98,7 +98,7 @@ func (t *Transfer) sendBlock(block []byte, blockNum uint16) error {
 	return utils.ErrDataPacketCanNotBeSent
 }
 
-func (t *Transfer) send(file string) (*types.Error, error) {
+func (c *Connection) send(file string) (*types.Error, error) {
 	stats, err := os.Stat(file)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -108,7 +108,7 @@ func (t *Transfer) send(file string) (*types.Error, error) {
 				ErrMsg:    fmt.Sprintf("%s not found", file)}, nil
 		}
 
-		t.l.Error(fmt.Sprintf("error while checking file exists: %s", err.Error()))
+		c.l.Error(fmt.Sprintf("error while checking file exists: %s", err.Error()))
 
 		return notDefinedError(), nil
 	}
@@ -122,14 +122,14 @@ func (t *Transfer) send(file string) (*types.Error, error) {
 
 	f, errOpen := os.Open(file)
 	if errOpen != nil {
-		t.l.Error(fmt.Sprintf("error while opening file: %s", errOpen.Error()))
+		c.l.Error(fmt.Sprintf("error while opening file: %s", errOpen.Error()))
 
 		return notDefinedError(), nil
 	}
 
 	defer func() {
 		if err := f.Close(); err != nil {
-			t.l.Error(fmt.Sprintf("error while closing file: %s", err.Error()))
+			c.l.Error(fmt.Sprintf("error while closing file: %s", err.Error()))
 		}
 	}()
 
@@ -140,22 +140,22 @@ func (t *Transfer) send(file string) (*types.Error, error) {
 
 		n, err := f.Read(block)
 		if err != nil {
-			t.l.Error("error while reading block")
+			c.l.Error("error while reading block")
 
 			return notDefinedError(), nil
 		}
 
-		if err := t.sendBlock(block[:n], blockNum); err != nil {
+		if err := c.sendBlock(block[:n], blockNum); err != nil {
 			if errors.Is(err, utils.ErrNonRecoverable) {
 				return nil, err
 			}
 
-			t.l.Error(fmt.Sprintf("error while sending data packet: %s", err.Error()))
+			c.l.Error(fmt.Sprintf("error while sending data packet: %s", err.Error()))
 
 			return notDefinedError(), nil
 		}
 
-		t.l.Debug(fmt.Sprintf("sent block#=%d, sent #bytes=%d", blockNum, n))
+		c.l.Debug(fmt.Sprintf("sent block#=%d, sent #bytes=%d", blockNum, n))
 
 		blockNum++
 

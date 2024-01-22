@@ -81,7 +81,7 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 		return
 	}
 
-	var c Connection = NewTransfer(conn, s.logger,
+	var c Transfer = NewConnection(conn, s.logger,
 		time.Duration(s.readTimeout)*time.Second,
 		time.Duration(s.writeTimeout)*time.Second,
 		s.numTries)
