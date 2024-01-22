@@ -11,10 +11,10 @@ import (
 
 var (
 	tftpPort     = utils.GetEnv[string]("TFTP_PORT", "69", false)
-	logLevel     = utils.GetEnv[string]("LOG_LEVEL", "debug", false)
-	readTimeout  = utils.GetEnv[uint]("READ_TIMEOUT", "5", false)
-	writeTimeout = utils.GetEnv[uint]("WRITE_TIMEOUT", "5", false)
-	numTries     = utils.GetEnv[uint]("NUM_TRIES", "5", false)
+	logLevel     = utils.GetEnv[string]("TFTP_LOG_LEVEL", "debug", false)
+	readTimeout  = utils.GetEnv[uint]("TFTP_READ_TIMEOUT", "5", false)
+	writeTimeout = utils.GetEnv[uint]("TFTP_WRITE_TIMEOUT", "5", false)
+	numTries     = utils.GetEnv[uint]("TFTP_NUM_TRIES", "5", false)
 	tftpBaseDir  = utils.GetEnv[string]("TFTP_BASE_DIR", utils.UserHomeDirPath(), false)
 )
 
