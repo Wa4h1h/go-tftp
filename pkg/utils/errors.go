@@ -8,5 +8,4 @@ var (
 	ErrDataPayloadTooBig      = errors.New("payload exceeds 512 bytes")
 	ErrDataMarshall           = errors.New("error while marshall data packet")
 	ErrDataPacketCanNotBeSent = errors.New("data packet can not be sent")
-	ErrNonRecoverable         = errors.New("non recoverable error")
 )

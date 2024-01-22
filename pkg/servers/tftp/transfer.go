@@ -12,7 +12,7 @@ import (
 )
 
 type Transfer interface {
-	send(file string) (*types.Error, error)
+	send(file string) error
 	sendBlock(block []byte, blockNum uint16) error
 }
 
@@ -84,7 +84,7 @@ func (c *Connection) sendBlock(block []byte, blockNum uint16) error {
 					continue
 				}
 			case errPacket.UnmarshalBinary(buf[:n]) == nil:
-				return utils.ErrNonRecoverable
+				return utils.ErrDataPacketCanNotBeSent
 			default:
 				continue
 			}
@@ -98,33 +98,43 @@ func (c *Connection) sendBlock(block []byte, blockNum uint16) error {
 	return utils.ErrDataPacketCanNotBeSent
 }
 
-func (c *Connection) send(file string) (*types.Error, error) {
+func (c *Connection) send(file string) error {
+	errPacket := notDefinedError()
+
 	stats, err := os.Stat(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return &types.Error{
+			errPacket = &types.Error{
 				Opcode:    types.OpCodeError,
 				ErrorCode: types.ErrFileNotFound,
-				ErrMsg:    fmt.Sprintf("%s not found", file)}, nil
+				ErrMsg:    fmt.Sprintf("%s not found", file)}
+		} else {
+			c.l.Error(fmt.Sprintf("error while checking file exists: %s", err.Error()))
 		}
 
-		c.l.Error(fmt.Sprintf("error while checking file exists: %s", err.Error()))
+		if err := sendErrorPacket(c.conn, errPacket); err != nil {
+			return err
+		}
 
-		return notDefinedError(), nil
+		return nil
 	}
 
 	if stats.Size()/types.MaxPayloadSize > types.MaxBlocks {
-		return &types.Error{
+		errPacket = &types.Error{
 			Opcode:    types.OpCodeError,
 			ErrorCode: types.ErrNotDefined,
-			ErrMsg:    "file too large to be transferred over tftp"}, nil
+			ErrMsg:    "file too large to be transferred over tftp"}
+
+		if err := sendErrorPacket(c.conn, errPacket); err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	f, errOpen := os.Open(file)
 	if errOpen != nil {
-		c.l.Error(fmt.Sprintf("error while opening file: %s", errOpen.Error()))
-
-		return notDefinedError(), nil
+		return fmt.Errorf("error while opening file: %w", errOpen)
 	}
 
 	defer func() {
@@ -140,19 +150,24 @@ func (c *Connection) send(file string) (*types.Error, error) {
 
 		n, err := f.Read(block)
 		if err != nil {
-			c.l.Error("error while reading block")
-
-			return notDefinedError(), nil
+			return fmt.Errorf("error while reading file block: %w", err)
 		}
 
 		if err := c.sendBlock(block[:n], blockNum); err != nil {
-			if errors.Is(err, utils.ErrNonRecoverable) {
-				return nil, err
+			if errors.Is(err, utils.ErrDataPacketCanNotBeSent) {
+				return err
+			} else if errors.Is(err, utils.ErrDataMarshall) {
+				errPacket = &types.Error{
+					Opcode:    types.OpCodeError,
+					ErrorCode: types.ErrNotDefined,
+					ErrMsg:    "server can not create data packet"}
+
+				if err := sendErrorPacket(c.conn, errPacket); err != nil {
+					return err
+				}
+
+				return nil
 			}
-
-			c.l.Error(fmt.Sprintf("error while sending data packet: %s", err.Error()))
-
-			return notDefinedError(), nil
 		}
 
 		c.l.Debug(fmt.Sprintf("sent block#=%d, sent #bytes=%d", blockNum, n))
@@ -160,7 +175,7 @@ func (c *Connection) send(file string) (*types.Error, error) {
 		blockNum++
 
 		if n < types.MaxPayloadSize {
-			return nil, nil
+			return nil
 		}
 	}
 }

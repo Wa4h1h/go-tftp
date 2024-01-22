@@ -81,23 +81,17 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 		return
 	}
 
-	var c Transfer = NewConnection(conn, s.logger,
+	var t Transfer = NewConnection(conn, s.logger,
 		time.Duration(s.readTimeout)*time.Second,
 		time.Duration(s.writeTimeout)*time.Second,
 		s.numTries)
 
 	if req.Opcode == types.OpCodeRRQ {
-		errPacket, err := c.send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
+		err := t.send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
 		if err != nil {
+			s.logger.Error(fmt.Sprintf("error while respondin to rrq: %s", err.Error()))
+
 			return
-		}
-
-		if errPacket != nil {
-			if err := sendErrorPacket(conn, errPacket); err != nil {
-				s.logger.Error(err.Error())
-
-				return
-			}
 		}
 	}
 }
