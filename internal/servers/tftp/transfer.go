@@ -155,7 +155,7 @@ func (c *Connection) send(file string) error {
 		if err := c.sendBlock(block[:n], blockNum); err != nil {
 			if errors.Is(err, utils.ErrDataPacketCanNotBeSent) {
 				return err
-			} else if errors.Is(err, utils.ErrDataMarshall) {
+			} else {
 				errPacket = &types.Error{
 					Opcode:    types.OpCodeError,
 					ErrorCode: types.ErrNotDefined,
