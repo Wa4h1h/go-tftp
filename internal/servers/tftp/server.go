@@ -86,12 +86,32 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 		time.Duration(s.writeTimeout)*time.Second,
 		s.numTries)
 
-	if req.Opcode == types.OpCodeRRQ {
+	switch req.Opcode {
+	case types.OpCodeRRQ:
 		err := t.send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
 		if err != nil {
-			s.logger.Error(fmt.Sprintf("error while respondin to rrq: %s", err.Error()))
+			s.logger.Error(fmt.Sprintf("error while responding to rrq: %s", err.Error()))
+
+			return
+		}
+	case types.OpCodeWRQ:
+		err := t.receive(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
+		if err != nil {
+			s.logger.Error(fmt.Sprintf("error while responding to wrq: %s", err.Error()))
+
+			return
+		}
+	default:
+		unknownOp := &types.Error{
+			Opcode:    types.OpCodeError,
+			ErrorCode: types.ErrIllegalTftpOp,
+			ErrMsg:    fmt.Sprintf("received operation code %d is unknown", req.Opcode),
+		}
+		if err := sendErrorPacket(conn, unknownOp); err != nil {
+			s.logger.Error(fmt.Sprintf("error while responding to wrq: %s", err.Error()))
 
 			return
 		}
 	}
+
 }
