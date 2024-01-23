@@ -14,6 +14,8 @@ import (
 type Transfer interface {
 	send(file string) error
 	sendBlock(block []byte, blockNum uint16) error
+	receive(file string) error
+	receiveBlock(block []byte, blockNum uint16) error
 }
 
 type Connection struct {
@@ -51,7 +53,7 @@ func (c *Connection) sendBlock(block []byte, blockNum uint16) error {
 		if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeTimeout)); err != nil {
 			c.l.Error(fmt.Sprintf("error while setting write timeout: %s", err.Error()))
 
-			continue
+			return utils.ErrCanNotSetWriteTimeout
 		}
 
 		if _, err := c.conn.Write(b); err != nil {
@@ -64,7 +66,7 @@ func (c *Connection) sendBlock(block []byte, blockNum uint16) error {
 			if err := c.conn.SetReadDeadline(time.Now().Add(c.readTimeout)); err != nil {
 				c.l.Error(fmt.Sprintf("error while setting read timeout: %s", err.Error()))
 
-				continue
+				return utils.ErrCanNotSetReadTimeout
 			}
 
 			buf := make([]byte, types.DatagramSize)
@@ -113,11 +115,7 @@ func (c *Connection) send(file string) error {
 			c.l.Error(fmt.Sprintf("error while checking file exists: %s", err.Error()))
 		}
 
-		if err := sendErrorPacket(c.conn, errPacket); err != nil {
-			return err
-		}
-
-		return nil
+		return sendErrorPacket(c.conn, errPacket)
 	}
 
 	if stats.Size()/types.MaxPayloadSize > types.MaxBlocks {
@@ -126,11 +124,7 @@ func (c *Connection) send(file string) error {
 			ErrorCode: types.ErrNotDefined,
 			ErrMsg:    "file too large to be transferred over tftp"}
 
-		if err := sendErrorPacket(c.conn, errPacket); err != nil {
-			return err
-		}
-
-		return nil
+		return sendErrorPacket(c.conn, errPacket)
 	}
 
 	f, errOpen := os.Open(file)
@@ -180,4 +174,12 @@ func (c *Connection) send(file string) error {
 			return nil
 		}
 	}
+}
+
+func (c *Connection) receiveBlock(block []byte, blockNum uint16) error {
+	return nil
+}
+
+func (c *Connection) receive(file string) error {
+	return nil
 }
