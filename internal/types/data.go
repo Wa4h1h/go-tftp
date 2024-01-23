@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/WadhahJemai/go-tftp/pkg/utils"
+	"github.com/WadhahJemai/go-tftp/internal/utils"
 )
 
 type Data struct {

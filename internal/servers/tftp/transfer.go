@@ -3,8 +3,8 @@ package tftp
 import (
 	"errors"
 	"fmt"
-	"github.com/WadhahJemai/go-tftp/pkg/types"
-	"github.com/WadhahJemai/go-tftp/pkg/utils"
+	"github.com/WadhahJemai/go-tftp/internal/types"
+	"github.com/WadhahJemai/go-tftp/internal/utils"
 	"go.uber.org/zap"
 	"net"
 	"os"
@@ -107,7 +107,8 @@ func (c *Connection) send(file string) error {
 			errPacket = &types.Error{
 				Opcode:    types.OpCodeError,
 				ErrorCode: types.ErrFileNotFound,
-				ErrMsg:    fmt.Sprintf("%s not found", file)}
+				ErrMsg:    fmt.Sprintf("%s not found", file),
+			}
 		} else {
 			c.l.Error(fmt.Sprintf("error while checking file exists: %s", err.Error()))
 		}
@@ -134,11 +135,9 @@ func (c *Connection) send(file string) error {
 
 	f, errOpen := os.Open(file)
 	if errOpen != nil {
-		if err := sendErrorPacket(c.conn, errPacket); err != nil {
-			return fmt.Errorf("error while opening file: %w", errOpen)
-		}
+		c.l.Error(fmt.Sprintf("error while opening file: %s", errOpen.Error()))
 
-		return nil
+		return sendErrorPacket(c.conn, errPacket)
 	}
 
 	defer func() {
@@ -154,11 +153,9 @@ func (c *Connection) send(file string) error {
 
 		n, err := f.Read(block)
 		if err != nil {
-			if err := sendErrorPacket(c.conn, errPacket); err != nil {
-				return fmt.Errorf("error while reading file block: %w", err)
-			}
+			c.l.Error(fmt.Sprintf("error while reading file block: %s", err.Error()))
 
-			return nil
+			return sendErrorPacket(c.conn, errPacket)
 		}
 
 		if err := c.sendBlock(block[:n], blockNum); err != nil {
@@ -168,13 +165,10 @@ func (c *Connection) send(file string) error {
 				errPacket = &types.Error{
 					Opcode:    types.OpCodeError,
 					ErrorCode: types.ErrNotDefined,
-					ErrMsg:    "server can not create data packet"}
-
-				if err := sendErrorPacket(c.conn, errPacket); err != nil {
-					return err
+					ErrMsg:    "server can not create data packet",
 				}
 
-				return nil
+				return sendErrorPacket(c.conn, errPacket)
 			}
 		}
 
