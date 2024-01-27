@@ -248,7 +248,12 @@ func (c *Connection) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
 		}
 
 		src := bytes.NewBuffer(data.Payload)
-		copied, _ := io.CopyN(blockW, src, int64(len(data.Payload)))
+		copied, errCopy := io.CopyN(blockW, src, int64(len(data.Payload)))
+		if errCopy != nil {
+			c.l.Error(fmt.Sprintf("error while copy payload: %s", err.Error()))
+
+			return receivedBlockNum, nullBytes, utils.ErrCanNotCopySLice
+		}
 
 		if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeTimeout)); err != nil {
 			c.l.Error(fmt.Sprintf("error while setting write timeout: %s", err.Error()))
@@ -321,8 +326,8 @@ func (c *Connection) receive(file string) error {
 		return err
 	}
 
+	block := make([]byte, 0, types.MaxPayloadSize)
 	for {
-		block := make([]byte, 0, types.MaxPayloadSize)
 		blockBuffer := bytes.NewBuffer(block)
 
 		blockNum, n, err := c.receiveBlock(blockBuffer)
@@ -340,12 +345,14 @@ func (c *Connection) receive(file string) error {
 			return sendErrorPacket(c.conn, errPacket)
 		}
 
-		_, errW := f.Write(block[:n])
+		_, errW := f.Write(blockBuffer.Bytes())
 		if errW != nil {
 			return errors.New("error while writing block to file")
 		}
 
 		c.l.Debug(fmt.Sprintf("received block#=%d, received #bytes=%d", blockNum, len(blockBuffer.Bytes())))
+
+		blockBuffer.Reset()
 
 		if n < types.MaxPayloadSize {
 			return nil
