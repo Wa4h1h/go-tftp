@@ -3,8 +3,8 @@ package tftp
 import (
 	"errors"
 	"fmt"
-	"github.com/WadhahJemai/go-tftp/internal/types"
-	"github.com/WadhahJemai/go-tftp/internal/utils"
+	"github.com/WadhahJemai/go-tftp/pkg/types"
+	"github.com/WadhahJemai/go-tftp/pkg/utils"
 	"go.uber.org/zap"
 	"net"
 	"time"
@@ -20,7 +20,8 @@ type Server struct {
 	writeTimeout uint
 }
 
-func NewServer(l *zap.Logger, port string, readTimeout uint, writeTimeout uint, numTries int, tftpFolder string) *Server {
+func NewServer(l *zap.Logger, port string, readTimeout uint,
+	writeTimeout uint, numTries int, tftpFolder string) *Server {
 	return &Server{logger: l, port: port,
 		readTimeout:  readTimeout,
 		writeTimeout: writeTimeout,
@@ -105,7 +106,7 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 		unknownOp := &types.Error{
 			Opcode:    types.OpCodeError,
 			ErrorCode: types.ErrIllegalTftpOp,
-			ErrMsg:    fmt.Sprintf("received operation code %d is unknown", req.Opcode),
+			ErrMsg:    fmt.Sprintf("server can not resolve request operation code %d", req.Opcode),
 		}
 		if err := sendErrorPacket(conn, unknownOp); err != nil {
 			s.logger.Error(fmt.Sprintf("error while responding to wrq: %s", err.Error()))
@@ -113,5 +114,4 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 			return
 		}
 	}
-
 }
