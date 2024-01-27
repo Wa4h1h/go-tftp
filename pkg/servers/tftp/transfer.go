@@ -327,9 +327,8 @@ func (c *Connection) receive(file string) error {
 	}
 
 	block := make([]byte, 0, types.MaxPayloadSize)
+	blockBuffer := bytes.NewBuffer(block)
 	for {
-		blockBuffer := bytes.NewBuffer(block)
-
 		blockNum, n, err := c.receiveBlock(blockBuffer)
 		if err != nil {
 			if errors.Is(err, utils.ErrPacketCanNotBeSent) || errors.Is(err, utils.ErrOtherSideConnClosed) {
