@@ -75,10 +75,7 @@ func (c *Connection) sendBlock(block []byte, blockNum uint16) error {
 			buf := make([]byte, types.DatagramSize)
 
 			n, err := c.conn.Read(buf)
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					return utils.ErrOtherSideConnClosed
-				}
+			if err != nil && !errors.Is(err, io.EOF) {
 				c.l.Error(fmt.Sprintf("error while reading ack: %s", err.Error()))
 
 				continue
@@ -226,10 +223,7 @@ func (c *Connection) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
 		}
 
 		n, err := c.conn.Read(datagram)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return receivedBlockNum, nullBytes, utils.ErrOtherSideConnClosed
-			}
+		if err != nil && !errors.Is(err, io.EOF) {
 			c.l.Error(fmt.Sprintf("error while reading ack: %s", err.Error()))
 
 			continue
