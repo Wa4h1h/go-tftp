@@ -13,8 +13,8 @@ import (
 type Server struct {
 	port         string
 	tftpFolder   string
-	logger       *zap.Logger
 	conn         net.PacketConn
+	logger       *zap.Logger
 	numTries     int
 	readTimeout  uint
 	writeTimeout uint

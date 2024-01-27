@@ -157,7 +157,7 @@ func (c *Connection) send(file string) error {
 		}
 
 		if err := c.sendBlock(block[:n], blockNum); err != nil {
-			if errors.Is(err, utils.ErrPacketCanNotBeSent) || errors.Is(err, utils.ErrOtherSideConnClosed) {
+			if errors.Is(err, utils.ErrPacketCanNotBeSent) {
 				return err
 			}
 
@@ -211,7 +211,7 @@ func (c *Connection) acknowledgeWrq() error {
 
 func (c *Connection) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
 	var data types.Data
-	var receivedBlockNum uint16
+	var wrongBlockNum uint16
 	var nullBytes uint16
 
 	datagram := make([]byte, types.DatagramSize)
@@ -219,7 +219,7 @@ func (c *Connection) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
 		if err := c.conn.SetReadDeadline(time.Now().Add(c.readTimeout)); err != nil {
 			c.l.Error(fmt.Sprintf("error while setting read timeout: %s", err.Error()))
 
-			return receivedBlockNum, nullBytes, utils.ErrCanNotSetReadTimeout
+			return wrongBlockNum, nullBytes, utils.ErrCanNotSetReadTimeout
 		}
 
 		n, err := c.conn.Read(datagram)
@@ -246,13 +246,13 @@ func (c *Connection) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
 		if errCopy != nil {
 			c.l.Error(fmt.Sprintf("error while copy payload: %s", err.Error()))
 
-			return receivedBlockNum, nullBytes, utils.ErrCanNotCopySLice
+			return wrongBlockNum, nullBytes, utils.ErrCanNotCopySLice
 		}
 
 		if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeTimeout)); err != nil {
 			c.l.Error(fmt.Sprintf("error while setting write timeout: %s", err.Error()))
 
-			return receivedBlockNum, nullBytes, utils.ErrCanNotSetWriteTimeout
+			return wrongBlockNum, nullBytes, utils.ErrCanNotSetWriteTimeout
 		}
 
 		ack := &types.Ack{
@@ -264,7 +264,7 @@ func (c *Connection) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
 		if errM != nil {
 			c.l.Error(err.Error())
 
-			return receivedBlockNum, nullBytes, utils.ErrPacketMarshall
+			return wrongBlockNum, nullBytes, utils.ErrPacketMarshall
 		}
 
 		_, errW := c.conn.Write(b)
@@ -278,7 +278,7 @@ func (c *Connection) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
 
 	}
 
-	return receivedBlockNum, nullBytes, utils.ErrPacketCanNotBeSent
+	return wrongBlockNum, nullBytes, utils.ErrPacketCanNotBeSent
 }
 
 func (c *Connection) receive(file string) error {
@@ -325,7 +325,7 @@ func (c *Connection) receive(file string) error {
 	for {
 		blockNum, n, err := c.receiveBlock(blockBuffer)
 		if err != nil {
-			if errors.Is(err, utils.ErrPacketCanNotBeSent) || errors.Is(err, utils.ErrOtherSideConnClosed) {
+			if errors.Is(err, utils.ErrPacketCanNotBeSent) {
 				return err
 			}
 
