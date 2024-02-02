@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/WadhahJemai/go-tftp/pkg/types"
-	"github.com/WadhahJemai/go-tftp/pkg/utils"
+	"github.com/Wa4h1h/go-tftp/pkg/types"
+	"github.com/Wa4h1h/go-tftp/pkg/utils"
 	"go.uber.org/zap"
 	"io"
 	"net"
@@ -242,6 +242,7 @@ func (c *Connection) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
 		}
 
 		src := bytes.NewBuffer(data.Payload)
+
 		copied, errCopy := io.CopyN(blockW, src, int64(len(data.Payload)))
 		if errCopy != nil {
 			c.l.Error(fmt.Sprintf("error while copy payload: %s", err.Error()))
@@ -297,7 +298,7 @@ func (c *Connection) receive(file string) error {
 		}
 
 		return sendErrorPacket(c.conn, errPacket)
-	case errStat != nil && !os.IsNotExist(errStat):
+	case !os.IsNotExist(errStat):
 		c.l.Error(fmt.Sprintf("error while checking file exists: %s", errStat.Error()))
 
 		return sendErrorPacket(c.conn, errPacket)
@@ -322,6 +323,7 @@ func (c *Connection) receive(file string) error {
 
 	block := make([]byte, 0, types.MaxPayloadSize)
 	blockBuffer := bytes.NewBuffer(block)
+
 	for {
 		blockNum, n, err := c.receiveBlock(blockBuffer)
 		if err != nil {

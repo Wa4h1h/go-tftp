@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/WadhahJemai/go-tftp/pkg/servers/tftp"
-	"github.com/WadhahJemai/go-tftp/pkg/utils"
+	"github.com/Wa4h1h/go-tftp/pkg/servers/tftp"
+	"github.com/Wa4h1h/go-tftp/pkg/utils"
 	"os"
 	"os/signal"
 	"syscall"

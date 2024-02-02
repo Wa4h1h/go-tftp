@@ -3,8 +3,8 @@ package tftp
 import (
 	"errors"
 	"fmt"
-	"github.com/WadhahJemai/go-tftp/pkg/types"
-	"github.com/WadhahJemai/go-tftp/pkg/utils"
+	"github.com/Wa4h1h/go-tftp/pkg/types"
+	"github.com/Wa4h1h/go-tftp/pkg/utils"
 	"go.uber.org/zap"
 	"net"
 	"time"

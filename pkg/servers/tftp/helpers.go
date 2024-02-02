@@ -2,7 +2,7 @@ package tftp
 
 import (
 	"fmt"
-	"github.com/WadhahJemai/go-tftp/pkg/types"
+	"github.com/Wa4h1h/go-tftp/pkg/types"
 	"net"
 )
 
