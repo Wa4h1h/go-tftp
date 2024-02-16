@@ -14,13 +14,13 @@ type Server struct {
 	port         string
 	tftpFolder   string
 	conn         net.PacketConn
-	logger       *zap.Logger
+	logger       *zap.SugaredLogger
 	numTries     int
 	readTimeout  uint
 	writeTimeout uint
 }
 
-func NewServer(l *zap.Logger, port string, readTimeout uint,
+func NewServer(l *zap.SugaredLogger, port string, readTimeout uint,
 	writeTimeout uint, numTries int, tftpFolder string) *Server {
 	return &Server{logger: l, port: port,
 		readTimeout:  readTimeout,
@@ -63,21 +63,21 @@ func (s *Server) Close() error {
 func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 	conn, err := net.Dial("udp", addr.String())
 	if err != nil {
-		s.logger.Error(err.Error())
+		s.logger.Errorf(err.Error())
 
 		return
 	}
 
 	defer func() {
 		if err := conn.Close(); err != nil {
-			s.logger.Error(fmt.Sprintf("error while closing connection with %s: %s", conn.RemoteAddr().Network(), err.Error()))
+			s.logger.Errorf("error while closing connection with %s: %s", conn.RemoteAddr().Network(), err.Error())
 		}
 	}()
 
 	var req types.Request
 
 	if err := req.UnmarshalBinary(datagram); err != nil {
-		s.logger.Error("error while reading request")
+		s.logger.Errorf("error while reading request")
 
 		return
 	}
@@ -91,14 +91,14 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 	case types.OpCodeRRQ:
 		err := t.send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
 		if err != nil {
-			s.logger.Error(fmt.Sprintf("error while responding to rrq: %s", err.Error()))
+			s.logger.Errorf("error while responding to rrq: %s", err.Error())
 
 			return
 		}
 	case types.OpCodeWRQ:
 		err := t.receive(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
 		if err != nil {
-			s.logger.Error(fmt.Sprintf("error while responding to wrq: %s", err.Error()))
+			s.logger.Errorf("error while responding to wrq: %s", err.Error())
 
 			return
 		}
@@ -109,7 +109,7 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 			ErrMsg:    fmt.Sprintf("server can not resolve request operation code %d", req.Opcode),
 		}
 		if err := sendErrorPacket(conn, unknownOp); err != nil {
-			s.logger.Error(fmt.Sprintf("error while responding to wrq: %s", err.Error()))
+			s.logger.Errorf("error while responding to wrq: %s", err.Error())
 
 			return
 		}
