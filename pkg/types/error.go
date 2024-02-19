@@ -14,7 +14,7 @@ type Error struct {
 	Opcode    OpCode
 }
 
-func (e *Error) MarshalBinary() (data []byte, err error) {
+func (e *Error) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	errLength := 2 + 2 + len(e.ErrMsg) + 1
 	b.Grow(errLength)

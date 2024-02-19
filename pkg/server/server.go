@@ -1,4 +1,4 @@
-package tftp
+package server
 
 import (
 	"errors"
@@ -47,6 +47,7 @@ func (s *Server) ListenAndServe() error {
 		}
 
 		if n > 0 {
+			s.logger.Info("new connection")
 			go s.handlePacket(addr, datagram)
 		}
 	}
@@ -82,7 +83,7 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 		return
 	}
 
-	var t Transfer = NewConnection(conn, s.logger,
+	t := NewConnection(conn, s.logger,
 		time.Duration(s.readTimeout)*time.Second,
 		time.Duration(s.writeTimeout)*time.Second,
 		s.numTries)

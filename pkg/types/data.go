@@ -13,7 +13,7 @@ type Data struct {
 	Opcode   OpCode
 }
 
-func (d *Data) MarshalBinary() (data []byte, err error) {
+func (d *Data) MarshalBinary() ([]byte, error) {
 	if len(d.Payload) > 512 {
 		return nil, utils.ErrDataPayloadTooBig
 	}

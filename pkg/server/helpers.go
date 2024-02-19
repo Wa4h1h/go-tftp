@@ -1,4 +1,4 @@
-package tftp
+package server
 
 import (
 	"fmt"
@@ -15,13 +15,13 @@ func notDefinedError() *types.Error {
 }
 
 func sendErrorPacket(conn net.Conn, errorPacket *types.Error) error {
-	b, errM := errorPacket.MarshalBinary()
-	if errM != nil {
-		return fmt.Errorf("error while marshal error packet: %s", errM)
+	b, err := errorPacket.MarshalBinary()
+	if err != nil {
+		return fmt.Errorf("error while marshal error packet: %w", err)
 	}
 
 	if _, err := conn.Write(b); err != nil {
-		return fmt.Errorf("error while marshal error packet: %s", err)
+		return fmt.Errorf("error while marshal error packet: %w", err)
 	}
 
 	return nil

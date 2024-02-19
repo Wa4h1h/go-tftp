@@ -14,7 +14,7 @@ type Request struct {
 	Opcode   OpCode
 }
 
-func (r *Request) MarshalBinary() (data []byte, err error) {
+func (r *Request) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	rqLen := 2 + len(r.Filename) + 1 + len(r.Mode) + 1
 

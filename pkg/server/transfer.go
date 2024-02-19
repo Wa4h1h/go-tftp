@@ -1,4 +1,4 @@
-package tftp
+package server
 
 import (
 	"bytes"
@@ -199,9 +199,8 @@ func (c *Connection) acknowledgeWrq() error {
 		return utils.ErrCanNotSetWriteTimeout
 	}
 
-	_, errW := c.conn.Write(b)
-	if errW != nil {
-		c.l.Errorf("error while writing data packet: %s", errW.Error())
+	if _, err := c.conn.Write(b); err != nil {
+		c.l.Errorf("error while writing data packet: %s", err.Error())
 
 		return utils.ErrPacketCanNotBeSent
 	}
@@ -215,6 +214,7 @@ func (c *Connection) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
 	var nullBytes uint16
 
 	datagram := make([]byte, types.DatagramSize)
+
 	for i := c.numTries; i > 0; i-- {
 		if err := c.conn.SetReadDeadline(time.Now().Add(c.readTimeout)); err != nil {
 			c.l.Errorf("error while setting read timeout: %s", err.Error())

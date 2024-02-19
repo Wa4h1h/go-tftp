@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Wa4h1h/go-tftp/pkg/servers/tftp"
+	"github.com/Wa4h1h/go-tftp/pkg/server"
 	"github.com/Wa4h1h/go-tftp/pkg/utils"
 	"os"
 	"os/signal"
@@ -19,7 +19,7 @@ var (
 
 func main() {
 	l := utils.NewLogger(logLevel).Sugar()
-	s := tftp.NewServer(l, tftpPort, readTimeout, writeTimeout, int(numTries), tftpBaseDir)
+	s := server.NewServer(l, tftpPort, readTimeout, writeTimeout, int(numTries), tftpBaseDir)
 
 	go func() {
 		if err := s.ListenAndServe(); err != nil {

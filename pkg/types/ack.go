@@ -12,7 +12,7 @@ type Ack struct {
 	BlockNum uint16
 }
 
-func (a *Ack) MarshalBinary() (data []byte, err error) {
+func (a *Ack) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	ackLength := 2 + 2
 	b.Grow(ackLength)
