@@ -23,6 +23,10 @@ const (
 	ErrNoSuchUser
 )
 
-const MaxBlocks = 65535
-const MaxPayloadSize = 512
-const DatagramSize = 516
+const (
+	MaxBlocks      = 65535
+	MaxPayloadSize = 512
+	DatagramSize   = 516
+)
+
+const DefaultClientTimeout = 5
