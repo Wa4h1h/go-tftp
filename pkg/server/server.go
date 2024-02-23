@@ -13,8 +13,8 @@ import (
 type Server struct {
 	port         string
 	tftpFolder   string
-	conn         net.PacketConn
 	logger       *zap.SugaredLogger
+	conn         net.PacketConn
 	numTries     int
 	readTimeout  uint
 	writeTimeout uint
@@ -47,7 +47,6 @@ func (s *Server) ListenAndServe() error {
 		}
 
 		if n > 0 {
-			s.logger.Info("new connection")
 			go s.handlePacket(addr, datagram)
 		}
 	}
@@ -83,21 +82,26 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 		return
 	}
 
-	t := NewConnection(conn, s.logger,
-		time.Duration(s.readTimeout)*time.Second,
-		time.Duration(s.writeTimeout)*time.Second,
-		s.numTries)
-
 	switch req.Opcode {
 	case types.OpCodeRRQ:
-		err := t.send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
+		sender := NewSender(conn, s.logger,
+			time.Duration(s.readTimeout)*time.Second,
+			time.Duration(s.writeTimeout)*time.Second,
+			s.numTries)
+
+		err := sender.send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
 		if err != nil {
 			s.logger.Errorf("error while responding to rrq: %s", err.Error())
 
 			return
 		}
 	case types.OpCodeWRQ:
-		err := t.receive(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
+		receiver := NewReceiver(conn, s.logger,
+			time.Duration(s.readTimeout)*time.Second,
+			time.Duration(s.writeTimeout)*time.Second,
+			s.numTries)
+
+		err := receiver.receive(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
 		if err != nil {
 			s.logger.Errorf("error while responding to wrq: %s", err.Error())
 

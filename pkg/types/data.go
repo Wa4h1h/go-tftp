@@ -14,7 +14,7 @@ type Data struct {
 }
 
 func (d *Data) MarshalBinary() ([]byte, error) {
-	if len(d.Payload) > 512 {
+	if len(d.Payload) > MaxPayloadSize {
 		return nil, utils.ErrDataPayloadTooBig
 	}
 
