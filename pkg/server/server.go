@@ -63,6 +63,7 @@ func (s *Server) ListenAndServe() error {
 		}
 
 		if n > 0 {
+			s.logger.Info()
 			go s.handlePacket(addr, datagram)
 		}
 	}
@@ -96,8 +97,6 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 
 		return
 	}
-
-	s.logger.Info(conn.LocalAddr())
 
 	defer func() {
 		if err := conn.Close(); err != nil {

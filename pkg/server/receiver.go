@@ -103,8 +103,6 @@ func (i *Incoming) ReceiveBlock(blockW io.Writer) (uint16, uint16, error) {
 			return wrongBlockNum, nullBytes, utils.ErrCanNotCopySLice
 		}
 
-		i.l.Infof("received --> %v", data)
-
 		if err := i.conn.SetWriteDeadline(time.Now().Add(i.writeTimeout)); err != nil {
 			i.l.Errorf("error while setting write timeout: %s", err.Error())
 

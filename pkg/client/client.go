@@ -90,6 +90,7 @@ func (c *Client) Get(ctx context.Context, filename string) error {
 	case <-ctx.Done():
 		err = ctx.Err()
 	case err = <-done:
+		c.conn.Close()
 	}
 
 	return err
