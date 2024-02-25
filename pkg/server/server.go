@@ -8,7 +8,6 @@ import (
 	"github.com/Wa4h1h/go-tftp/pkg/utils"
 	"go.uber.org/zap"
 	"net"
-	"syscall"
 	"time"
 )
 
@@ -34,16 +33,7 @@ func NewServer(l *zap.SugaredLogger, port string, readTimeout uint,
 
 func (s *Server) ListenAndServe() error {
 	l := net.ListenConfig{
-		Control: func(network, address string, c syscall.RawConn) error {
-			var opErr error
-			err := c.Control(func(fd uintptr) {
-				opErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1)
-			})
-			if err != nil {
-				return err
-			}
-			return opErr
-		},
+		Control: controlReusePort(),
 	}
 	conn, err := l.ListenPacket(context.Background(), "udp", fmt.Sprintf(":%s", s.port))
 	if err != nil {
@@ -80,16 +70,7 @@ func (s *Server) Close() error {
 func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 	d := net.Dialer{
 		LocalAddr: s.conn.LocalAddr(),
-		Control: func(network, address string, c syscall.RawConn) error {
-			var opErr error
-			err := c.Control(func(fd uintptr) {
-				opErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1)
-			})
-			if err != nil {
-				return err
-			}
-			return opErr
-		},
+		Control:   controlReusePort(),
 	}
 	conn, err := d.Dial("udp", addr.String())
 	if err != nil {
