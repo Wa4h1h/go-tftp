@@ -14,9 +14,9 @@ import (
 )
 
 type Receiver interface {
-	acknowledgeWrq() error
-	receive(file string) error
-	receiveBlock(blockW io.Writer) (uint16, uint16, error)
+	AcknowledgeWrq() error
+	Receive(file string) error
+	ReceiveBlock(blockW io.Writer) (uint16, uint16, error)
 }
 
 type Incoming struct {
@@ -33,7 +33,7 @@ func NewReceiver(conn net.Conn,
 	return &Incoming{conn: conn, l: logger, readTimeout: readTimeout, writeTimeout: writeTimeout, numTries: numTries}
 }
 
-func (i *Incoming) acknowledgeWrq() error {
+func (i *Incoming) AcknowledgeWrq() error {
 	ack := &types.Ack{
 		Opcode:   types.OpCodeACK,
 		BlockNum: 0,
@@ -61,7 +61,7 @@ func (i *Incoming) acknowledgeWrq() error {
 	return nil
 }
 
-func (i *Incoming) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
+func (i *Incoming) ReceiveBlock(blockW io.Writer) (uint16, uint16, error) {
 	var data types.Data
 	var wrongBlockNum uint16
 	var nullBytes uint16
@@ -98,10 +98,12 @@ func (i *Incoming) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
 
 		copied, errCopy := io.CopyN(blockW, src, int64(len(data.Payload)))
 		if errCopy != nil {
-			i.l.Errorf("error while copy payload: %s", err.Error())
+			i.l.Errorf("error while copy payload: %s", errCopy.Error())
 
 			return wrongBlockNum, nullBytes, utils.ErrCanNotCopySLice
 		}
+
+		i.l.Infof("received --> %v", data)
 
 		if err := i.conn.SetWriteDeadline(time.Now().Add(i.writeTimeout)); err != nil {
 			i.l.Errorf("error while setting write timeout: %s", err.Error())
@@ -116,7 +118,7 @@ func (i *Incoming) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
 
 		b, errM := ack.MarshalBinary()
 		if errM != nil {
-			i.l.Error(err.Error())
+			i.l.Error(errM.Error())
 
 			return wrongBlockNum, nullBytes, utils.ErrPacketMarshall
 		}
@@ -126,7 +128,7 @@ func (i *Incoming) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
 			return data.BlockNum, uint16(copied), nil
 		}
 
-		i.l.Errorf("error while writing data packet: %s", err.Error())
+		i.l.Errorf("error while writing data packet: %s", errW.Error())
 
 		continue
 	}
@@ -134,7 +136,7 @@ func (i *Incoming) receiveBlock(blockW io.Writer) (uint16, uint16, error) {
 	return wrongBlockNum, nullBytes, utils.ErrPacketCanNotBeSent
 }
 
-func (i *Incoming) receive(file string) error {
+func (i *Incoming) Receive(file string) error {
 	errPacket := notDefinedError()
 
 	var errStat error
@@ -169,15 +171,11 @@ func (i *Incoming) receive(file string) error {
 		}
 	}()
 
-	if err := i.acknowledgeWrq(); err != nil {
-		return err
-	}
-
 	block := make([]byte, 0, types.MaxPayloadSize)
 	blockBuffer := bytes.NewBuffer(block)
 
 	for {
-		blockNum, n, err := i.receiveBlock(blockBuffer)
+		blockNum, n, err := i.ReceiveBlock(blockBuffer)
 		if err != nil {
 			if errors.Is(err, utils.ErrPacketCanNotBeSent) {
 				return err

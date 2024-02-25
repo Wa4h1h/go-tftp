@@ -13,8 +13,8 @@ import (
 )
 
 type Sender interface {
-	send(file string) error
-	sendBlock(block []byte, blockNum uint16) error
+	Send(file string) error
+	SendBlock(block []byte, blockNum uint16) error
 }
 
 type Outgoing struct {
@@ -31,7 +31,7 @@ func NewSender(conn net.Conn,
 	return &Outgoing{conn: conn, l: logger, readTimeout: readTimeout, writeTimeout: writeTimeout, numTries: numTries}
 }
 
-func (o *Outgoing) sendBlock(block []byte, blockNum uint16) error {
+func (o *Outgoing) SendBlock(block []byte, blockNum uint16) error {
 	var ack types.Ack
 	var errPacket types.Error
 
@@ -99,7 +99,7 @@ func (o *Outgoing) sendBlock(block []byte, blockNum uint16) error {
 	return utils.ErrPacketCanNotBeSent
 }
 
-func (o *Outgoing) send(file string) error {
+func (o *Outgoing) Send(file string) error {
 	errPacket := notDefinedError()
 
 	stats, err := os.Stat(file)
@@ -152,7 +152,7 @@ func (o *Outgoing) send(file string) error {
 			return sendErrorPacket(o.conn, errPacket)
 		}
 
-		if err := o.sendBlock(block[:n], blockNum); err != nil {
+		if err := o.SendBlock(block[:n], blockNum); err != nil {
 			if errors.Is(err, utils.ErrPacketCanNotBeSent) {
 				return err
 			}

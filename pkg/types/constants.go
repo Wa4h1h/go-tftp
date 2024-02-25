@@ -29,4 +29,7 @@ const (
 	DatagramSize   = 516
 )
 
-const DefaultClientTimeout = 5
+const (
+	DefaultClientTimeout = 5
+	DefaultMode          = "octet"
+)
