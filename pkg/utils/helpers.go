@@ -15,7 +15,7 @@ func UserHomeDirPath() string {
 
 	if _, err := os.Stat(tftpBaseDir); err != nil {
 		if os.IsNotExist(err) {
-			if err := os.Mkdir(tftpBaseDir, 0750); err != nil {
+			if err := os.Mkdir(tftpBaseDir, 0o750); err != nil {
 				panic(fmt.Errorf("error while creating tftp base dir: %w", err))
 			}
 		} else {

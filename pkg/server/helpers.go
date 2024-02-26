@@ -51,7 +51,8 @@ func reusePort() control {
 
 func assertSenderFile(l *zap.SugaredLogger, c net.Conn, filename string) (bool, error) {
 	errPacket := notDefinedError()
-	stats, err := os.Stat(filename)
+
+	_, err := os.Stat(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
 			errPacket = &types.Error{
@@ -61,16 +62,6 @@ func assertSenderFile(l *zap.SugaredLogger, c net.Conn, filename string) (bool, 
 			}
 		} else {
 			l.Errorf("error while checking file exists: %s", err.Error())
-		}
-
-		return false, sendErrorPacket(c, errPacket)
-	}
-
-	if stats.Size()/types.MaxPayloadSize > types.MaxBlocks {
-		errPacket = &types.Error{
-			Opcode:    types.OpCodeError,
-			ErrorCode: types.ErrNotDefined,
-			ErrMsg:    "file too large to be transferred over tftp",
 		}
 
 		return false, sendErrorPacket(c, errPacket)

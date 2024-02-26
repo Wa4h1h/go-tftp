@@ -29,4 +29,8 @@ func main() {
 	if err := c.Get(context.Background(), "main-concepts.pdf"); err != nil {
 		l.Error(err)
 	}
+
+	if err := c.Get(context.Background(), "Kubernetes.pdf"); err != nil {
+		l.Error(err)
+	}
 }

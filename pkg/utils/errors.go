@@ -9,6 +9,4 @@ var (
 	ErrPacketMarshall        = errors.New("error: can marshall packet")
 	ErrPacketCanNotBeSent    = errors.New("error: packet can not be sent")
 	ErrCanNotSetWriteTimeout = errors.New("error: can not set write timeout")
-	ErrCanNotSetReadTimeout  = errors.New("error: can not set read timeout")
-	ErrCanNotCopySLice       = errors.New("error: can not copy slice")
 )

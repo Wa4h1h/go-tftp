@@ -108,31 +108,33 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 		time.Duration(s.writeTimeout)*time.Second,
 		s.numTries)
 
-	if req.Opcode == types.OpCodeRRQ {
-		if ok, err := assertSenderFile(s.logger, conn, req.Filename); !ok && err != nil {
-			return
+	file := fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename)
+
+	switch req.Opcode {
+	case types.OpCodeRRQ:
+		{
+			ok, err := assertSenderFile(s.logger, conn, file)
+			s.logger.Info(ok, err)
+			if ok && err == nil {
+				if err := t.Send(file); err != nil {
+					s.logger.Errorf("error while responding to rrq: %s", err.Error())
+				}
+			}
 		}
+	case types.OpCodeWRQ:
+		{
+			ok, err := assertReceiverFile(s.logger, conn, file)
+			if ok && err == nil {
+				if err := t.AcknowledgeWrq(); err != nil {
+					s.logger.Errorf("error while acknowledging wrq: %s", err.Error())
 
-		if err := t.Send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename)); err != nil {
-			s.logger.Errorf("error while responding to rrq: %s", err.Error())
+					return
+				}
 
-			return
-		}
-	} else {
-		if ok, err := assertReceiverFile(s.logger, conn, req.Filename); !ok && err != nil {
-			return
-		}
-
-		if err := t.AcknowledgeWrq(); err != nil {
-			s.logger.Errorf("error while acknowledging wrq: %s", err.Error())
-
-			return
-		}
-
-		if err := t.Receive(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename)); err != nil {
-			s.logger.Errorf("error while responding to wrq: %s", err.Error())
-
-			return
+				if err := t.Receive(file); err != nil {
+					s.logger.Errorf("error while responding to wrq: %s", err.Error())
+				}
+			}
 		}
 	}
 }
