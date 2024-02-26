@@ -114,7 +114,6 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 	case types.OpCodeRRQ:
 		{
 			ok, err := assertSenderFile(s.logger, conn, file)
-			s.logger.Info(ok, err)
 			if ok && err == nil {
 				if err := t.Send(file); err != nil {
 					s.logger.Errorf("error while responding to rrq: %s", err.Error())

@@ -13,16 +13,15 @@ import (
 
 type Connector interface {
 	Connect(addr string) error
-	Close() error
 	Get(ctx context.Context, filename string) error
 	Put(ctx context.Context, filename string) error
 }
 
 type Client struct {
-	conn     net.Conn
-	l        *zap.SugaredLogger
-	timeout  time.Duration
-	numTries uint
+	remoteAddr *net.UDPAddr
+	l          *zap.SugaredLogger
+	timeout    time.Duration
+	numTries   uint
 }
 
 func NewClient(l *zap.SugaredLogger, numTries uint) Connector {
@@ -37,20 +36,12 @@ func (c *Client) SetTimeout(timeout uint) {
 }
 
 func (c *Client) Connect(addr string) error {
-	conn, errListen := net.Dial("udp", addr)
-	if errListen != nil {
-		return fmt.Errorf("error while listening %s: %w", addr, errListen)
+	remoteAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		return fmt.Errorf("error while listening %s: %w", addr, err)
 	}
 
-	c.conn = conn
-
-	return nil
-}
-
-func (c *Client) Close() error {
-	if err := c.conn.Close(); err != nil {
-		return fmt.Errorf("error while closing socket: %w", err)
-	}
+	c.remoteAddr = remoteAddr
 
 	return nil
 }
@@ -67,6 +58,17 @@ func (c *Client) Get(ctx context.Context, filename string) error {
 	}
 
 	go func(d chan<- error, file string) {
+		conn, errListen := net.DialUDP("udp", nil, c.remoteAddr)
+		if errListen != nil {
+			d <- fmt.Errorf("error while creating udp listener: %w", errListen)
+
+			return
+		}
+
+		defer func(c *net.UDPConn) {
+			conn.Close()
+		}(conn)
+
 		req := &types.Request{
 			Opcode:   types.OpCodeRRQ,
 			Filename: file,
@@ -80,13 +82,13 @@ func (c *Client) Get(ctx context.Context, filename string) error {
 			return
 		}
 
-		if _, err := c.conn.Write(b); err != nil {
+		if _, err := conn.Write(b); err != nil {
 			d <- fmt.Errorf("error while writing request: %w", err)
 
 			return
 		}
 
-		t := server.NewTransfer(c.conn, c.l, c.timeout, c.timeout, int(c.numTries))
+		t := server.NewTransfer(conn, c.l, c.timeout, c.timeout, int(c.numTries))
 
 		if err := t.Receive(file); err != nil {
 			d <- fmt.Errorf("error while receiving file %s: %w", file, err)

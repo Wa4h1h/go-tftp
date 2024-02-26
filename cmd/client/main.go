@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"sync"
 
 	"github.com/Wa4h1h/go-tftp/pkg/client"
 	"github.com/Wa4h1h/go-tftp/pkg/utils"
@@ -20,17 +21,25 @@ func main() {
 		l.Error(err)
 	}
 
-	defer func(client client.Connector) {
-		if err := client.Close(); err != nil {
-			l.Error(err.Error())
+	wg := sync.WaitGroup{}
+
+	wg.Add(2)
+
+	go func() {
+		if err := c.Get(context.Background(), "main-concepts.pdf"); err != nil {
+			l.Error(err)
 		}
-	}(c)
 
-	if err := c.Get(context.Background(), "main-concepts.pdf"); err != nil {
-		l.Error(err)
-	}
+		wg.Done()
+	}()
 
-	if err := c.Get(context.Background(), "Kubernetes.pdf"); err != nil {
-		l.Error(err)
-	}
+	go func() {
+		if err := c.Get(context.Background(), "Kubernetes.pdf"); err != nil {
+			l.Error(err)
+		}
+
+		wg.Done()
+	}()
+
+	wg.Wait()
 }
