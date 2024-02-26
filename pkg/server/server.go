@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"time"
+
 	"github.com/Wa4h1h/go-tftp/pkg/types"
 	"github.com/Wa4h1h/go-tftp/pkg/utils"
 	"go.uber.org/zap"
-	"net"
-	"time"
 )
 
 type Server struct {
@@ -22,8 +23,10 @@ type Server struct {
 }
 
 func NewServer(l *zap.SugaredLogger, port string, readTimeout uint,
-	writeTimeout uint, numTries int, tftpFolder string) *Server {
-	return &Server{logger: l, port: port,
+	writeTimeout uint, numTries int, tftpFolder string,
+) *Server {
+	return &Server{
+		logger: l, port: port,
 		readTimeout:  readTimeout,
 		writeTimeout: writeTimeout,
 		numTries:     numTries,
@@ -33,8 +36,9 @@ func NewServer(l *zap.SugaredLogger, port string, readTimeout uint,
 
 func (s *Server) ListenAndServe() error {
 	l := net.ListenConfig{
-		Control: controlReusePort(),
+		Control: reusePort(),
 	}
+
 	conn, err := l.ListenPacket(context.Background(), "udp", fmt.Sprintf(":%s", s.port))
 	if err != nil {
 		s.logger.Error(err.Error())
@@ -43,17 +47,15 @@ func (s *Server) ListenAndServe() error {
 	}
 
 	s.conn = conn
+	datagram := make([]byte, types.DatagramSize)
 
 	for {
-		datagram := make([]byte, types.DatagramSize)
-
 		n, addr, err := conn.ReadFrom(datagram)
 		if err != nil && !errors.Is(err, net.ErrClosed) {
 			return err
 		}
 
 		if n > 0 {
-			s.logger.Info()
 			go s.handlePacket(addr, datagram)
 		}
 	}
@@ -70,8 +72,9 @@ func (s *Server) Close() error {
 func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 	d := net.Dialer{
 		LocalAddr: s.conn.LocalAddr(),
-		Control:   controlReusePort(),
+		Control:   reusePort(),
 	}
+
 	conn, err := d.Dial("udp", addr.String())
 	if err != nil {
 		s.logger.Errorf(err.Error())
@@ -88,50 +91,45 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 	var req types.Request
 
 	if err := req.UnmarshalBinary(datagram); err != nil {
-		s.logger.Errorf("error while reading request")
-
-		return
-	}
-
-	switch req.Opcode {
-	case types.OpCodeRRQ:
-		s.logger.Info(req)
-		sender := NewSender(conn, s.logger,
-			time.Duration(s.readTimeout)*time.Second,
-			time.Duration(s.writeTimeout)*time.Second,
-			s.numTries)
-
-		err := sender.Send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
-		if err != nil {
-			s.logger.Errorf("error while responding to rrq: %s", err.Error())
-
-			return
-		}
-	case types.OpCodeWRQ:
-		receiver := NewReceiver(conn, s.logger,
-			time.Duration(s.readTimeout)*time.Second,
-			time.Duration(s.writeTimeout)*time.Second,
-			s.numTries)
-
-		if err := receiver.AcknowledgeWrq(); err != nil {
-			s.logger.Errorf("error while acknowledging wrq: %s", err.Error())
-
-			return
-		}
-
-		err := receiver.Receive(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename))
-		if err != nil {
-			s.logger.Errorf("error while responding to wrq: %s", err.Error())
-
-			return
-		}
-	default:
 		unknownOp := &types.Error{
 			Opcode:    types.OpCodeError,
 			ErrorCode: types.ErrIllegalTftpOp,
 			ErrMsg:    fmt.Sprintf("server can not resolve request operation code %d", req.Opcode),
 		}
 		if err := sendErrorPacket(conn, unknownOp); err != nil {
+			s.logger.Errorf("error while responding to request: %s", err.Error())
+		}
+
+		return
+	}
+
+	t := NewTransfer(conn, s.logger,
+		time.Duration(s.readTimeout)*time.Second,
+		time.Duration(s.writeTimeout)*time.Second,
+		s.numTries)
+
+	if req.Opcode == types.OpCodeRRQ {
+		if ok, err := assertSenderFile(s.logger, conn, req.Filename); !ok && err != nil {
+			return
+		}
+
+		if err := t.Send(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename)); err != nil {
+			s.logger.Errorf("error while responding to rrq: %s", err.Error())
+
+			return
+		}
+	} else {
+		if ok, err := assertReceiverFile(s.logger, conn, req.Filename); !ok && err != nil {
+			return
+		}
+
+		if err := t.AcknowledgeWrq(); err != nil {
+			s.logger.Errorf("error while acknowledging wrq: %s", err.Error())
+
+			return
+		}
+
+		if err := t.Receive(fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename)); err != nil {
 			s.logger.Errorf("error while responding to wrq: %s", err.Error())
 
 			return

@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/Wa4h1h/go-tftp/pkg/utils"
 	"strings"
+
+	"github.com/Wa4h1h/go-tftp/pkg/utils"
 )
 
 type Request struct {

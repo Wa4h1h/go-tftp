@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+
 	"github.com/Wa4h1h/go-tftp/pkg/client"
 	"github.com/Wa4h1h/go-tftp/pkg/utils"
 )
@@ -19,7 +20,13 @@ func main() {
 		l.Error(err)
 	}
 
-	if err := c.Get(context.Background(), "omz_installer.sh"); err != nil {
+	defer func(client client.Connector) {
+		if err := client.Close(); err != nil {
+			l.Error(err.Error())
+		}
+	}(c)
+
+	if err := c.Get(context.Background(), "main-concepts.pdf"); err != nil {
 		l.Error(err)
 	}
 }

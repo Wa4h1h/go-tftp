@@ -2,9 +2,13 @@ package server
 
 import (
 	"fmt"
-	"github.com/Wa4h1h/go-tftp/pkg/types"
 	"net"
+	"os"
 	"syscall"
+
+	"go.uber.org/zap"
+
+	"github.com/Wa4h1h/go-tftp/pkg/types"
 )
 
 func notDefinedError() *types.Error {
@@ -30,15 +34,69 @@ func sendErrorPacket(conn net.Conn, errorPacket *types.Error) error {
 
 type control func(network, address string, c syscall.RawConn) error
 
-func controlReusePort() control {
+func reusePort() control {
 	return func(network, address string, c syscall.RawConn) error {
 		var opErr error
+
 		err := c.Control(func(fd uintptr) {
 			opErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1)
 		})
 		if err != nil {
-			return err
+			opErr = err
 		}
+
 		return opErr
 	}
+}
+
+func assertSenderFile(l *zap.SugaredLogger, c net.Conn, filename string) (bool, error) {
+	errPacket := notDefinedError()
+	stats, err := os.Stat(filename)
+	if err != nil {
+		if os.IsNotExist(err) {
+			errPacket = &types.Error{
+				Opcode:    types.OpCodeError,
+				ErrorCode: types.ErrFileNotFound,
+				ErrMsg:    fmt.Sprintf("%s not found", filename),
+			}
+		} else {
+			l.Errorf("error while checking file exists: %s", err.Error())
+		}
+
+		return false, sendErrorPacket(c, errPacket)
+	}
+
+	if stats.Size()/types.MaxPayloadSize > types.MaxBlocks {
+		errPacket = &types.Error{
+			Opcode:    types.OpCodeError,
+			ErrorCode: types.ErrNotDefined,
+			ErrMsg:    "file too large to be transferred over tftp",
+		}
+
+		return false, sendErrorPacket(c, errPacket)
+	}
+
+	return true, nil
+}
+
+func assertReceiverFile(l *zap.SugaredLogger, c net.Conn, filename string) (bool, error) {
+	errPacket := notDefinedError()
+	_, err := os.Stat(filename)
+
+	switch {
+	case err == nil:
+		errPacket = &types.Error{
+			Opcode:    types.OpCodeError,
+			ErrorCode: types.ErrFileAlreadyExists,
+			ErrMsg:    fmt.Sprintf("%s already exists", filename),
+		}
+
+		return false, sendErrorPacket(c, errPacket)
+	case !os.IsNotExist(err):
+		l.Errorf("error while checking file exists: %s", err.Error())
+
+		return false, sendErrorPacket(c, errPacket)
+	}
+
+	return true, nil
 }

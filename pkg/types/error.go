@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/Wa4h1h/go-tftp/pkg/utils"
 	"strings"
+
+	"github.com/Wa4h1h/go-tftp/pkg/utils"
 )
 
 type Error struct {
@@ -62,5 +63,4 @@ func (e *Error) UnmarshalBinary(data []byte) error {
 	e.ErrMsg = strings.TrimRight(e.ErrMsg, string(byte(0)))
 
 	return nil
-
 }

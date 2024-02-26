@@ -3,15 +3,17 @@ package client
 import (
 	"context"
 	"fmt"
+	"net"
+	"time"
+
 	"github.com/Wa4h1h/go-tftp/pkg/server"
 	"github.com/Wa4h1h/go-tftp/pkg/types"
 	"go.uber.org/zap"
-	"net"
-	"time"
 )
 
 type Connector interface {
 	Connect(addr string) error
+	Close() error
 	Get(ctx context.Context, filename string) error
 	Put(ctx context.Context, filename string) error
 }
@@ -45,6 +47,14 @@ func (c *Client) Connect(addr string) error {
 	return nil
 }
 
+func (c *Client) Close() error {
+	if err := c.conn.Close(); err != nil {
+		return fmt.Errorf("error while closing socket: %w", err)
+	}
+
+	return nil
+}
+
 func (c *Client) Get(ctx context.Context, filename string) error {
 	var cancel context.CancelFunc
 	var err error
@@ -71,26 +81,26 @@ func (c *Client) Get(ctx context.Context, filename string) error {
 		}
 
 		if _, err := c.conn.Write(b); err != nil {
-			d <- fmt.Errorf("error while sending read request: %w", err)
+			d <- fmt.Errorf("error while writing request: %w", err)
 
 			return
 		}
 
-		r := server.NewReceiver(c.conn, c.l, c.timeout, c.timeout, int(c.numTries))
-		if err := r.Receive(file); err != nil {
-			d <- fmt.Errorf("error while receiving file: %w", err)
+		t := server.NewTransfer(c.conn, c.l, c.timeout, c.timeout, int(c.numTries))
+
+		if err := t.Receive(file); err != nil {
+			d <- fmt.Errorf("error while receiving file %s: %w", file, err)
 
 			return
 		}
 
-		d <- nil
+		close(d)
 	}(done, filename)
 
 	select {
 	case <-ctx.Done():
 		err = ctx.Err()
 	case err = <-done:
-		c.conn.Close()
 	}
 
 	return err

@@ -1,9 +1,10 @@
 package utils
 
 import (
+	"strings"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"strings"
 )
 
 func NewLogger(level string) *zap.Logger {

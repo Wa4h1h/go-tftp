@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/Wa4h1h/go-tftp/pkg/server"
-	"github.com/Wa4h1h/go-tftp/pkg/utils"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/Wa4h1h/go-tftp/pkg/server"
+	"github.com/Wa4h1h/go-tftp/pkg/utils"
 )
 
 var (
