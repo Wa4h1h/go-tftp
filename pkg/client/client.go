@@ -11,8 +11,16 @@ import (
 	"go.uber.org/zap"
 )
 
+type Op uint16
+
+const (
+	get Op = iota
+	put
+)
+
 type Connector interface {
 	Connect(addr string) error
+	execute(ctx context.Context, filename string, op Op) error
 	Get(ctx context.Context, filename string) error
 	Put(ctx context.Context, filename string) error
 }
@@ -35,18 +43,7 @@ func (c *Client) SetTimeout(timeout uint) {
 	c.timeout = time.Duration(timeout) * time.Second
 }
 
-func (c *Client) Connect(addr string) error {
-	remoteAddr, err := net.ResolveUDPAddr("udp", addr)
-	if err != nil {
-		return fmt.Errorf("error while listening %s: %w", addr, err)
-	}
-
-	c.remoteAddr = remoteAddr
-
-	return nil
-}
-
-func (c *Client) Get(ctx context.Context, filename string) error {
+func (c *Client) execute(ctx context.Context, filename string, op Op) error {
 	var cancel context.CancelFunc
 	var err error
 
@@ -70,9 +67,14 @@ func (c *Client) Get(ctx context.Context, filename string) error {
 		}(conn)
 
 		req := &types.Request{
-			Opcode:   types.OpCodeRRQ,
 			Filename: file,
 			Mode:     types.DefaultMode,
+		}
+
+		if op == get {
+			req.Opcode = types.OpCodeRRQ
+		} else {
+			req.Opcode = types.OpCodeWRQ
 		}
 
 		b, err := req.MarshalBinary()
@@ -90,10 +92,47 @@ func (c *Client) Get(ctx context.Context, filename string) error {
 
 		t := server.NewTransfer(conn, c.l, c.timeout, c.timeout, int(c.numTries))
 
-		if err := t.Receive(file); err != nil {
-			d <- fmt.Errorf("error while receiving file %s: %w", file, err)
+		switch op {
+		case get:
+			if err := t.Receive(file); err != nil {
+				d <- fmt.Errorf("error while receiving file %s: %w", file, err)
 
-			return
+				return
+			}
+		case put:
+			buff := make([]byte, types.DatagramSize)
+			if _, err := conn.Read(buff); err != nil {
+				d <- fmt.Errorf("error while reading ack: %w", err)
+
+				return
+			}
+
+			var ack types.Ack
+			var errPacket types.Error
+
+			switch {
+			case ack.UnmarshalBinary(buff) == nil:
+				{
+					if ack.BlockNum != 0 {
+						d <- fmt.Errorf("expected BlockNum=0 but got %d", ack.BlockNum)
+
+						return
+					}
+				}
+			case errPacket.UnmarshalBinary(buff) == nil:
+				{
+					fmt.Println(errPacket)
+					close(d)
+
+					return
+				}
+			}
+
+			if err := t.Send(file); err != nil {
+				d <- fmt.Errorf("error while sending file %s: %w", file, err)
+
+				return
+			}
 		}
 
 		close(d)
@@ -108,6 +147,21 @@ func (c *Client) Get(ctx context.Context, filename string) error {
 	return err
 }
 
-func (c *Client) Put(ctx context.Context, filename string) error {
+func (c *Client) Connect(addr string) error {
+	remoteAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		return fmt.Errorf("error while listening %s: %w", addr, err)
+	}
+
+	c.remoteAddr = remoteAddr
+
 	return nil
+}
+
+func (c *Client) Get(ctx context.Context, filename string) error {
+	return c.execute(ctx, filename, get)
+}
+
+func (c *Client) Put(ctx context.Context, filename string) error {
+	return c.execute(ctx, filename, put)
 }

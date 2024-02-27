@@ -23,18 +23,10 @@ func main() {
 
 	wg := sync.WaitGroup{}
 
-	wg.Add(2)
+	wg.Add(1)
 
 	go func() {
-		if err := c.Get(context.Background(), "main-concepts.pdf"); err != nil {
-			l.Error(err)
-		}
-
-		wg.Done()
-	}()
-
-	go func() {
-		if err := c.Get(context.Background(), "Kubernetes.pdf"); err != nil {
+		if err := c.Put(context.Background(), "Kubernetes.pdf"); err != nil {
 			l.Error(err)
 		}
 
