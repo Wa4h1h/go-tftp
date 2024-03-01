@@ -28,8 +28,6 @@ func (c *Cli) Read() {
 		done, err := evaluator.evaluate()
 		if err != nil {
 			fmt.Printf("%s\n", err.Error())
-
-			continue
 		}
 		if done {
 			break

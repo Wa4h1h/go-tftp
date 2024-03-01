@@ -103,6 +103,11 @@ func (c *Client) execute(filename string, op Op) error {
 				return
 			}
 		case put:
+			if !checkFileExist(file) {
+				d <- fmt.Errorf("%s does not exist", file)
+
+				return
+			}
 			buff := make([]byte, types.DatagramSize)
 			if _, err := conn.Read(buff); err != nil {
 				d <- fmt.Errorf("error while reading ack: %w", err)

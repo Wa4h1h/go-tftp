@@ -102,12 +102,13 @@ func (c *Connection) ReceiveBlock(blockW io.Writer) (uint16, uint16, error) {
 			continue
 		}
 
-		if err := data.UnmarshalBinary(datagram[:n]); err != nil {
+		if errPacket.UnmarshalBinary(datagram[:n]) == nil {
+			fmt.Println(errPacket.ErrMsg)
+			return wrongBlockNum, nullBytes, nil
+		} else if err := data.UnmarshalBinary(datagram[:n]); err != nil {
 			c.l.Errorf("error while unmarshal data packet: %s", err.Error())
 
 			continue
-		} else if errPacket.UnmarshalBinary(datagram[:n]) == nil {
-			return wrongBlockNum, nullBytes, utils.ErrPacketCanNotBeSent
 		}
 
 		src := bytes.NewBuffer(data.Payload)
@@ -178,6 +179,8 @@ func (c *Connection) Receive(file string) error {
 			}
 
 			return sendErrorPacket(c.conn, errPacket)
+		} else if err == nil && blockNum == 0 && n == 0 {
+			return nil
 		}
 
 		_, errW := f.Write(blockBuffer.Bytes())
@@ -186,14 +189,14 @@ func (c *Connection) Receive(file string) error {
 		}
 
 		if c.trace {
-			c.l.Debugf("received block#=%d, received #bytes=%d", blockNum, len(blockBuffer.Bytes()))
+			fmt.Printf("received block#=%d, received #bytes=%d\n", blockNum, len(blockBuffer.Bytes()))
 		}
 
 		blockBuffer.Reset()
 		bytesAccum += n
 
 		if n < types.MaxPayloadSize {
-			c.l.Debugf("received %d blocks, received %d bytes", blockNum, bytesAccum)
+			fmt.Printf("received %d blocks, received %d bytes\n", blockNum, bytesAccum)
 			return nil
 		}
 	}
@@ -302,14 +305,14 @@ func (c *Connection) Send(file string) error {
 		}
 
 		if c.trace {
-			c.l.Debugf("sent block#=%d, sent #bytes=%d", blockNum, n)
+			fmt.Printf("sent block#=%d, sent #bytes=%d\n", blockNum, n)
 		}
 
 		blockNum++
 		bytesAccum += n
 
 		if n < types.MaxPayloadSize {
-			c.l.Debugf("sent %d blocks, sent %d bytes", blockNum, bytesAccum)
+			fmt.Printf("sent %d blocks, sent %d bytes\n", blockNum, bytesAccum)
 
 			return nil
 		}

@@ -16,4 +16,7 @@ func main() {
 	c := client.NewCli(l, tftp)
 
 	c.Read()
+	/*getRegex := "^put\\s+(\\S+)$"
+	r := regexp.MustCompile(getRegex)
+	fmt.Println(r.FindStringSubmatch("put Kubernetes.pdf"))*/
 }
