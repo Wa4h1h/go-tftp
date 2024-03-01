@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	getRegex     = "^get\\s+(\\S+)$"
-	putRegex     = "^put\\s+(\\S+)$"
+	getRegex     = "^get\\s+([\\S\\s]+)$"
+	putRegex     = "^put\\s+([\\S\\s]+)$"
 	timeoutRegex = "^timeout\\s+(\\d+)$"
 	connectRegex = "^connect\\s+(\\S+)\\s+(\\S+)$"
 	traceRegex   = "^trace$"

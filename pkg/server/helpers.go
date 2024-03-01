@@ -2,10 +2,12 @@ package server
 
 import (
 	"fmt"
-	"golang.org/x/sys/unix"
 	"net"
 	"os"
+	"strings"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 
 	"go.uber.org/zap"
 
@@ -18,6 +20,16 @@ func notDefinedError() *types.Error {
 		ErrorCode: types.ErrNotDefined,
 		ErrMsg:    "no defined error",
 	}
+}
+
+func getFilename(filePath string) string {
+	lastIndex := strings.LastIndex(filePath, "/")
+
+	if lastIndex != -1 {
+		return filePath[lastIndex+1:]
+	}
+
+	return filePath
 }
 
 func sendErrorPacket(conn net.Conn, errorPacket *types.Error) error {

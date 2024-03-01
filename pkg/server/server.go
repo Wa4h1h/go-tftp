@@ -110,7 +110,7 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 		time.Duration(s.writeTimeout)*time.Second,
 		s.numTries, s.trace)
 
-	file := fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename)
+	file := fmt.Sprintf("%s/%s", s.tftpFolder, getFilename(req.Filename))
 
 	switch req.Opcode {
 	case types.OpCodeRRQ:
