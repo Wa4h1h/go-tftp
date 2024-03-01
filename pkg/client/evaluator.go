@@ -14,7 +14,7 @@ var (
 	getRegex     = "^get\\s+([\\S\\s]+)$"
 	putRegex     = "^put\\s+([\\S\\s]+)$"
 	timeoutRegex = "^timeout\\s+(\\d+)$"
-	connectRegex = "^connect\\s+(\\S+)\\s+(\\S+)$"
+	connectRegex = "^connect\\s+([\\S\\s]+)\\s+([\\S\\s]+)$"
 	traceRegex   = "^trace$"
 	quitRegex    = "^quit$"
 	helpRegex    = "^help$"
@@ -33,7 +33,7 @@ func NewEvaluator(l *zap.SugaredLogger, client Connector) *Evaluator {
 		client: client,
 	}
 
-	e.regexPatterns = make(map[string]*regexp.Regexp, 4)
+	e.regexPatterns = make(map[string]*regexp.Regexp)
 
 	e.regexPatterns["get"] = regexp.MustCompile(getRegex)
 	e.regexPatterns["put"] = regexp.MustCompile(putRegex)
