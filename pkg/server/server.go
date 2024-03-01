@@ -20,10 +20,11 @@ type Server struct {
 	numTries     int
 	readTimeout  uint
 	writeTimeout uint
+	trace        bool
 }
 
 func NewServer(l *zap.SugaredLogger, port string, readTimeout uint,
-	writeTimeout uint, numTries int, tftpFolder string,
+	writeTimeout uint, numTries int, tftpFolder string, trace bool,
 ) *Server {
 	return &Server{
 		logger: l, port: port,
@@ -31,6 +32,7 @@ func NewServer(l *zap.SugaredLogger, port string, readTimeout uint,
 		writeTimeout: writeTimeout,
 		numTries:     numTries,
 		tftpFolder:   tftpFolder,
+		trace:        trace,
 	}
 }
 
@@ -94,7 +96,7 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 		unknownOp := &types.Error{
 			Opcode:    types.OpCodeError,
 			ErrorCode: types.ErrIllegalTftpOp,
-			ErrMsg:    fmt.Sprintf("server can not resolve request operation code %d", req.Opcode),
+			ErrMsg:    "server can not resolve request operation",
 		}
 		if err := sendErrorPacket(conn, unknownOp); err != nil {
 			s.logger.Errorf("error while responding to request: %s", err.Error())
@@ -106,7 +108,7 @@ func (s *Server) handlePacket(addr net.Addr, datagram []byte) {
 	t := NewTransfer(conn, s.logger,
 		time.Duration(s.readTimeout)*time.Second,
 		time.Duration(s.writeTimeout)*time.Second,
-		s.numTries)
+		s.numTries, s.trace)
 
 	file := fmt.Sprintf("%s/%s", s.tftpFolder, req.Filename)
 

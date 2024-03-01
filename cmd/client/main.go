@@ -21,6 +21,8 @@ func main() {
 		l.Error(err)
 	}
 
+	c.SetTrace(true)
+
 	wg := sync.WaitGroup{}
 
 	wg.Add(1)

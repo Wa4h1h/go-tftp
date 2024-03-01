@@ -10,17 +10,18 @@ import (
 )
 
 var (
-	tftpPort     = utils.GetEnv[string]("TFTP_PORT", "69", false)
-	logLevel     = utils.GetEnv[string]("TFTP_LOG_LEVEL", "debug", false)
-	readTimeout  = utils.GetEnv[uint]("TFTP_READ_TIMEOUT", "5", false)
-	writeTimeout = utils.GetEnv[uint]("TFTP_WRITE_TIMEOUT", "5", false)
-	numTries     = utils.GetEnv[uint]("TFTP_NUM_TRIES", "5", false)
-	tftpBaseDir  = utils.GetEnv[string]("TFTP_BASE_DIR", utils.UserHomeDirPath(), false)
+	tftpPort          = utils.GetEnv[string]("TFTP_PORT", "69", false)
+	logLevel          = utils.GetEnv[string]("TFTP_LOG_LEVEL", "debug", false)
+	readTimeout       = utils.GetEnv[uint]("TFTP_READ_TIMEOUT", "5", false)
+	writeTimeout      = utils.GetEnv[uint]("TFTP_WRITE_TIMEOUT", "5", false)
+	numTries          = utils.GetEnv[uint]("TFTP_NUM_TRIES", "5", false)
+	tftpBaseDir       = utils.GetEnv[string]("TFTP_BASE_DIR", utils.UserHomeDirPath(), false)
+	tftpEnableTracing = utils.GetEnv[bool]("TFTP_TRACE", "false", false)
 )
 
 func main() {
 	l := utils.NewLogger(logLevel).Sugar()
-	s := server.NewServer(l, tftpPort, readTimeout, writeTimeout, int(numTries), tftpBaseDir)
+	s := server.NewServer(l, tftpPort, readTimeout, writeTimeout, int(numTries), tftpBaseDir, tftpEnableTracing)
 
 	go func() {
 		if err := s.ListenAndServe(); err != nil {

@@ -30,13 +30,18 @@ type Client struct {
 	l          *zap.SugaredLogger
 	timeout    time.Duration
 	numTries   uint
+	trace      bool
 }
 
-func NewClient(l *zap.SugaredLogger, numTries uint) Connector {
+func NewClient(l *zap.SugaredLogger, numTries uint) *Client {
 	c := &Client{l: l, numTries: numTries}
 	c.timeout = time.Duration(types.DefaultClientTimeout) * time.Second
 
 	return c
+}
+
+func (c *Client) SetTrace(trace bool) {
+	c.trace = trace
 }
 
 func (c *Client) SetTimeout(timeout uint) {
@@ -77,9 +82,9 @@ func (c *Client) execute(ctx context.Context, filename string, op Op) error {
 			req.Opcode = types.OpCodeWRQ
 		}
 
-		b, err := req.MarshalBinary()
-		if err != nil {
-			d <- fmt.Errorf("error while marshalling request: %w", err)
+		b, errM := req.MarshalBinary()
+		if errM != nil {
+			d <- fmt.Errorf("error while marshalling request: %w", errM)
 
 			return
 		}
@@ -90,7 +95,7 @@ func (c *Client) execute(ctx context.Context, filename string, op Op) error {
 			return
 		}
 
-		t := server.NewTransfer(conn, c.l, c.timeout, c.timeout, int(c.numTries))
+		t := server.NewTransfer(conn, c.l, c.timeout, c.timeout, int(c.numTries), c.trace)
 
 		switch op {
 		case get:

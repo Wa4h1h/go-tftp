@@ -28,13 +28,18 @@ type Connection struct {
 	numTries     int
 	readTimeout  time.Duration
 	writeTimeout time.Duration
+	trace        bool
 }
 
 func NewTransfer(conn net.Conn,
 	logger *zap.SugaredLogger, readTimeout time.Duration,
-	writeTimeout time.Duration, numTries int,
+	writeTimeout time.Duration, numTries int, trace bool,
 ) Transfer {
-	return &Connection{conn: conn, l: logger, readTimeout: readTimeout, writeTimeout: writeTimeout, numTries: numTries}
+	return &Connection{
+		conn: conn, l: logger, readTimeout: readTimeout,
+		writeTimeout: writeTimeout, numTries: numTries,
+		trace: trace,
+	}
 }
 
 func (c *Connection) AcknowledgeWrq() error {
@@ -157,6 +162,7 @@ func (c *Connection) Receive(file string) error {
 
 	block := make([]byte, 0, types.MaxPayloadSize)
 	blockBuffer := bytes.NewBuffer(block)
+	var bytesAccum uint16
 
 	for {
 		blockNum, n, err := c.ReceiveBlock(blockBuffer)
@@ -179,11 +185,15 @@ func (c *Connection) Receive(file string) error {
 			return errors.New("error while writing block to file")
 		}
 
-		c.l.Debugf("received block#=%d, received #bytes=%d", blockNum, len(blockBuffer.Bytes()))
+		if c.trace {
+			c.l.Debugf("received block#=%d, received #bytes=%d", blockNum, len(blockBuffer.Bytes()))
+		}
 
 		blockBuffer.Reset()
+		bytesAccum += n
 
 		if n < types.MaxPayloadSize {
+			c.l.Debugf("received %d blocks, received %d bytes", blockNum, bytesAccum)
 			return nil
 		}
 	}
@@ -269,6 +279,7 @@ func (c *Connection) Send(file string) error {
 	var blockNum uint16 = 1
 
 	block := make([]byte, types.MaxPayloadSize)
+	bytesAccum := 0
 
 	for {
 		n, err := f.Read(block)
@@ -290,11 +301,16 @@ func (c *Connection) Send(file string) error {
 			return sendErrorPacket(c.conn, errPacket)
 		}
 
-		c.l.Debugf("sent block#=%d, sent #bytes=%d", blockNum, n)
+		if c.trace {
+			c.l.Debugf("sent block#=%d, sent #bytes=%d", blockNum, n)
+		}
 
 		blockNum++
+		bytesAccum += n
 
 		if n < types.MaxPayloadSize {
+			c.l.Debugf("sent %d blocks, sent %d bytes", blockNum, bytesAccum)
+
 			return nil
 		}
 	}
