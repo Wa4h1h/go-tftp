@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"golang.org/x/sys/unix"
 	"net"
 	"os"
 	"syscall"
@@ -39,7 +40,7 @@ func reusePort() control {
 		var opErr error
 
 		err := c.Control(func(fd uintptr) {
-			opErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1)
+			opErr = syscall.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
 		})
 		if err != nil {
 			opErr = err
