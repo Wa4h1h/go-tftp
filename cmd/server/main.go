@@ -16,7 +16,7 @@ var (
 	writeTimeout      = utils.GetEnv[uint]("TFTP_WRITE_TIMEOUT", "5", false)
 	numTries          = utils.GetEnv[uint]("TFTP_NUM_TRIES", "5", false)
 	tftpBaseDir       = utils.GetEnv[string]("TFTP_BASE_DIR", utils.UserHomeDirPath(), false)
-	tftpEnableTracing = utils.GetEnv[bool]("TFTP_TRACE", "false", false)
+	tftpEnableTracing = utils.GetEnv[bool]("TFTP_TRACE", "true", false)
 )
 
 func main() {
