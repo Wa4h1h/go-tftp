@@ -56,14 +56,17 @@ func (e *Evaluator) evaluate() (bool, error) {
 	if matches := e.regexPatterns["put"].FindStringSubmatch(e.line); len(matches) == 2 {
 		return false, e.client.Put(matches[1])
 	}
+
 	if matches := e.regexPatterns["timeout"].FindStringSubmatch(e.line); len(matches) == 2 {
 		n, err := strconv.ParseUint(matches[1], 10, 32)
 		if err != nil {
 			return false, fmt.Errorf("timeout value can not be parsed: %w", err)
 		}
+
 		e.client.SetTimeout(uint(n))
 		return false, nil
 	}
+
 	if matches := e.regexPatterns["connect"].FindStringSubmatch(e.line); len(matches) == 3 {
 		return false, e.client.Connect(fmt.Sprintf("%s:%s", matches[1], matches[2]))
 	}

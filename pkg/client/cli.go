@@ -21,9 +21,13 @@ func (c *Cli) Read() {
 	scanner := bufio.NewScanner(os.Stdin)
 	evaluator := NewEvaluator(c.l, c.tftpClient)
 
-	fmt.Print("tftp> ")
+	for {
+		fmt.Print("tftp> ")
 
-	for scanner.Scan() {
+		if !scanner.Scan() {
+			break
+		}
+
 		evaluator.line = scanner.Text()
 
 		done, err := evaluator.evaluate()
@@ -34,8 +38,6 @@ func (c *Cli) Read() {
 		if done {
 			break
 		}
-
-		fmt.Print("tftp> ")
 	}
 
 	if err := scanner.Err(); err != nil {
