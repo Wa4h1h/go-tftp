@@ -20,9 +20,11 @@ const (
 
 type Connector interface {
 	Connect(addr string) error
-	execute(ctx context.Context, filename string, op Op) error
-	Get(ctx context.Context, filename string) error
-	Put(ctx context.Context, filename string) error
+	SetTrace()
+	SetTimeout(timeout uint)
+	execute(filename string, op Op) error
+	Get(filename string) error
+	Put(filename string) error
 }
 
 type Client struct {
@@ -33,31 +35,27 @@ type Client struct {
 	trace      bool
 }
 
-func NewClient(l *zap.SugaredLogger, numTries uint) *Client {
+func NewClient(l *zap.SugaredLogger, numTries uint) Connector {
 	c := &Client{l: l, numTries: numTries}
 	c.timeout = time.Duration(types.DefaultClientTimeout) * time.Second
 
 	return c
 }
 
-func (c *Client) SetTrace(trace bool) {
-	c.trace = trace
+func (c *Client) SetTrace() {
+	c.trace = !c.trace
 }
 
 func (c *Client) SetTimeout(timeout uint) {
 	c.timeout = time.Duration(timeout) * time.Second
 }
 
-func (c *Client) execute(ctx context.Context, filename string, op Op) error {
-	var cancel context.CancelFunc
+func (c *Client) execute(filename string, op Op) error {
 	var err error
 
 	done := make(chan error)
-
-	if _, ok := ctx.Deadline(); !ok {
-		ctx, cancel = context.WithTimeout(ctx, c.timeout)
-		defer cancel()
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
 
 	go func(d chan<- error, file string) {
 		conn, errListen := net.DialUDP("udp", nil, c.remoteAddr)
@@ -163,10 +161,10 @@ func (c *Client) Connect(addr string) error {
 	return nil
 }
 
-func (c *Client) Get(ctx context.Context, filename string) error {
-	return c.execute(ctx, filename, get)
+func (c *Client) Get(filename string) error {
+	return c.execute(filename, get)
 }
 
-func (c *Client) Put(ctx context.Context, filename string) error {
-	return c.execute(ctx, filename, put)
+func (c *Client) Put(filename string) error {
+	return c.execute(filename, put)
 }
