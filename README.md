@@ -24,7 +24,7 @@ Commands:
 | `TFTP_READ_TIMEOUT`      | Timeout while reading tftp request in seconds                                     | 5             |
 | `TFTP_WRITE_TIMEOUT`     | Timeout while writing tftp request in seconds                                     | 5             |
 | `TFTP_NUM_TRIES`         | Number of times that a read/write request should be executed if one of them fails | 5             |
-| `TFTP_BASE_DIR`          | Tftp folder, where file can stored and pulled from                                | ~./tftp       |
+| `TFTP_BASE_DIR`          | Tftp folder, where file can be stored and pulled from                             | ~./tftp       |
 | `TFTP_TRACE`             | Log each sent/received udp packet                                                 | false         |
 
 ### Example get request
