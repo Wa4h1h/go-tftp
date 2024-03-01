@@ -25,13 +25,16 @@ func (c *Cli) Read() {
 
 	for scanner.Scan() {
 		evaluator.line = scanner.Text()
+
 		done, err := evaluator.evaluate()
 		if err != nil {
 			fmt.Printf("%s\n", err.Error())
 		}
+
 		if done {
 			break
 		}
+
 		fmt.Print("tftp> ")
 	}
 
