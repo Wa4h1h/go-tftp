@@ -99,8 +99,6 @@ func (c *Client) execute(filename string, op Op) error {
 		case get:
 			if err := t.Receive(file); err != nil {
 				d <- fmt.Errorf("error while receiving file %s: %w", file, err)
-
-				return
 			}
 		case put:
 			if !checkFileExist(file) {
@@ -138,8 +136,6 @@ func (c *Client) execute(filename string, op Op) error {
 
 			if err := t.Send(file); err != nil {
 				d <- fmt.Errorf("error while sending file %s: %w", file, err)
-
-				return
 			}
 		}
 
