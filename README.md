@@ -62,5 +62,5 @@ sent block#=33, sent #bytes=512
 sent block#=34, sent #bytes=512
 sent block#=35, sent #bytes=512
 sent block#=36, sent #bytes=289
-sent 37 blocks, sent 18209 bytes
+sent 36 blocks, sent 18209 bytes
 ````

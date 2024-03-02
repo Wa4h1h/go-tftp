@@ -310,7 +310,7 @@ func (c *Connection) Send(file string) error {
 		bytesAccum += n
 
 		if n < types.MaxPayloadSize {
-			fmt.Printf("sent %d blocks, sent %d bytes\n", blockNum, bytesAccum)
+			fmt.Printf("sent %d blocks, sent %d bytes\n", blockNum-1, bytesAccum)
 
 			return nil
 		}
