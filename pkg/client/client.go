@@ -151,6 +151,8 @@ func (c *Client) execute(filename string, op Op) error {
 	case <-ctx.Done():
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			err = errors.New(fmt.Sprintf("request exceeded timeout %ds", int(c.timeout.Seconds())))
+		} else {
+			err = ctx.Err()
 		}
 	case err = <-done:
 	}
