@@ -64,6 +64,7 @@ func (e *Evaluator) evaluate() (bool, error) {
 		}
 
 		e.client.SetTimeout(uint(n))
+
 		return false, nil
 	}
 
@@ -73,6 +74,7 @@ func (e *Evaluator) evaluate() (bool, error) {
 
 	if matches := e.regexPatterns["trace"].FindStringSubmatch(e.line); len(matches) == 1 {
 		e.client.SetTrace()
+
 		return false, nil
 	}
 

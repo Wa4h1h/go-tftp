@@ -20,8 +20,11 @@ func NewCli(l *zap.SugaredLogger, tftpClient Connector) *Cli {
 func (c *Cli) Read() {
 	scanner := bufio.NewScanner(os.Stdin)
 	evaluator := NewEvaluator(c.l, c.tftpClient)
+	done := false
 
-	for {
+	var err error
+
+	for !done {
 		fmt.Print("tftp> ")
 
 		if !scanner.Scan() {
@@ -30,13 +33,9 @@ func (c *Cli) Read() {
 
 		evaluator.line = scanner.Text()
 
-		done, err := evaluator.evaluate()
+		done, err = evaluator.evaluate()
 		if err != nil {
 			fmt.Printf("%s\n", err.Error())
-		}
-
-		if done {
-			break
 		}
 	}
 

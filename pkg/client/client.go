@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -54,6 +55,7 @@ func (c *Client) execute(filename string, op Op) error {
 	var err error
 
 	done := make(chan error)
+
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
@@ -101,41 +103,44 @@ func (c *Client) execute(filename string, op Op) error {
 				d <- fmt.Errorf("error while receiving file %s: %w", file, err)
 			}
 		case put:
-			if !checkFileExist(file) {
-				d <- fmt.Errorf("%s does not exist", file)
+			{
+				if !checkFileExist(file) {
+					d <- fmt.Errorf("%s does not exist", file)
 
-				return
-			}
-			buff := make([]byte, types.DatagramSize)
-			if _, err := conn.Read(buff); err != nil {
-				d <- fmt.Errorf("error while reading ack: %w", err)
+					return
+				}
 
-				return
-			}
+				buff := make([]byte, types.DatagramSize)
 
-			var ack types.Ack
-			var errPacket types.Error
+				if _, err := conn.Read(buff); err != nil {
+					d <- fmt.Errorf("error while reading ack: %w", err)
 
-			switch {
-			case ack.UnmarshalBinary(buff) == nil:
-				{
-					if ack.BlockNum != 0 {
-						d <- fmt.Errorf("expected BlockNum=0 but got %d", ack.BlockNum)
+					return
+				}
+
+				var ack types.Ack
+				var errPacket types.Error
+
+				switch {
+				case ack.UnmarshalBinary(buff) == nil:
+					{
+						if ack.BlockNum != 0 {
+							d <- fmt.Errorf("expected BlockNum=0 but got %d", ack.BlockNum)
+
+							return
+						}
+					}
+				case errPacket.UnmarshalBinary(buff) == nil:
+					{
+						fmt.Println(errPacket.ErrMsg)
 
 						return
 					}
 				}
-			case errPacket.UnmarshalBinary(buff) == nil:
-				{
-					fmt.Println(errPacket)
-					close(d)
 
-					return
+				if err = t.Send(file); err != nil {
+					d <- fmt.Errorf("error while sending file %s: %w", file, err)
 				}
-			}
-
-			if err := t.Send(file); err != nil {
-				d <- fmt.Errorf("error while sending file %s: %w", file, err)
 			}
 		}
 
@@ -144,7 +149,9 @@ func (c *Client) execute(filename string, op Op) error {
 
 	select {
 	case <-ctx.Done():
-		err = ctx.Err()
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			err = errors.New(fmt.Sprintf("request exceeded timeout %ds", int(c.timeout.Seconds())))
+		}
 	case err = <-done:
 	}
 

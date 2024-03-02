@@ -91,8 +91,6 @@ func (c *Connection) ReceiveBlock(blockW io.Writer) (uint16, uint16, error) {
 				return wrongBlockNum, nullBytes, nil
 			}
 
-			c.l.Errorf("error while reading ack: %s", err.Error())
-
 			continue
 		}
 
